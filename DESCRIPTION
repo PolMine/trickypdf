@@ -1,0 +1,26 @@
+Package: pdf2xml
+Type: Package
+Title: Turn pdf into xml for corpus preparation
+Version: 0.1.0
+Date: 2017-06-11
+Author: Andreas Blaette
+Maintainer: Andreas Blaette <andreas.blaette@uni-due.de>
+Depends:
+    knitr
+Imports:
+    methods,
+    xml2,
+    pbapply
+Suggests:
+VignetteBuilder: knitr
+LazyData: yes
+Description: The class 'PDF' in the package includes methods to parse, prune and
+    xmlify pdf documents. The speciality of the package is that it can handle pdf
+    documents with two columns, and to correct lines that were scanned somewhat tiltedly.
+BugReports: https://github.com/PolMine/pdf2xml/issues
+License: GPL-3
+URL: https://www.github.com/PolMine/pdf2xml
+Collate: 
+    'PDF.R'
+    'pdf2xml.R'
+RoxygenNote: 6.0.1
