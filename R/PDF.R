@@ -1,4 +1,5 @@
 setOldClass("xml_document")
+setOldClass("html")
 
 #' Convert pdf document to plain text/XML.
 #' 
@@ -26,6 +27,7 @@ setOldClass("xml_document")
 #' @importFrom xml2 xml_find_all write_xml xml_attrs xml_set_attrs xml_add_child xml_new_root
 #' @importFrom pbapply pblapply
 #' @importFrom methods setRefClass new
+#' @importFrom htmltools HTML
 #' @rdname PDF-class
 #' @name PDF
 #' @examples
@@ -39,6 +41,8 @@ setOldClass("xml_document")
 #' P$concatenate()
 #' P$purge()
 #' P$xmlify()
+#' P$as.markdown()
+#' P$as.html()
 #' P$write(filename = "/Users/blaette/Lab/tmp/cdu.xml")
 #' 
 #' plenaryprotocol <- system.file(package = "pdf2xml", "extdata", "pdf", "18238.pdf")
@@ -64,7 +68,9 @@ PDF <- setRefClass(
     margins = "integer",
     deviation = "integer",
     xmlification = "xml_document",
-    pagesizes = "data.frame"
+    pagesizes = "data.frame",
+    markdown = "character",
+    html = "html"
   ),
   
   methods = list(
@@ -291,6 +297,36 @@ PDF <- setRefClass(
         }
       )
       invisible(.self$xmlification)
+    },
+    
+    as.markdown = function(){
+      pagesMarkdown <- lapply(
+        xml_find_all(.self$xmlification, xpath = "/document/page"),
+        function(page){
+          paras <- sapply(
+            xml_find_all(page, xpath = "./p"),
+            function(paragraph) xml_text(paragraph)
+          )
+          paste(paras, collapse = "\n\n")
+        }
+      )
+      .self$markdown <- paste(paste(pagesMarkdown, collapse = "\n\n* * *\n\n"), "\n")
+      invisible(.self$markdown)
+    },
+    
+    as.html = function(){
+      mdFilename <- tempfile(fileext = ".md")
+      htmlFile <- tempfile(fileext = ".html")
+      cat(.self$markdown, file = mdFilename)
+      markdown::markdownToHTML(file = mdFilename, output = htmlFile)
+      htmldoc <- scan(file = htmlFile, what = character(), sep = "\n", quiet = TRUE)
+      htmldoc <- paste(htmldoc, collapse = "\n")
+      .self$html <- HTML(htmldoc)
+      invisible(.self$html)
+    },
+    
+    browse = function(){
+      htmltools::html_print(.self$html)
     },
     
     write = function(filename){
