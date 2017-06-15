@@ -15,6 +15,7 @@ setOldClass("html")
 #' @field margin a named integer vector ("top", "bottom", "left", "right") indicating the margins of the text
 #' @field deviation allowed deviation of columns from page center
 #' @field xmlification xml to output
+#' @field no_pages number of pages of the pdf document (after pdf2xml)
 #' @param filename_pdf path to a pdf document
 #' @param first first page of the pdf document to be included
 #' @param last last page of the pdf document to be included
@@ -24,35 +25,66 @@ setOldClass("html")
 #' @param root name of the root node
 #' @param metadata named character vector, attribtutes of root node of output xml document
 #' @param filename character vector
+#' @param viewer the viewer to use to inspect pdf or html documents
 #' @importFrom xml2 xml_find_all write_xml xml_attrs xml_set_attrs xml_add_child xml_new_root
 #' @importFrom pbapply pblapply
 #' @importFrom methods setRefClass new
-#' @importFrom htmltools HTML
+#' @importFrom htmltools HTML html_print
+#' @importFrom Rpoppler PDF_info
+#' @importFrom stringi stri_extract_all
+#' @importFrom markdown markdownToHTML
 #' @rdname PDF-class
 #' @name PDF
 #' @examples
 #' \dontrun{
-#' P <- PDF$new(filename_pdf = "/Users/blaette/Lab/tmp/cdu.pdf", first = 7, last = 119)
-#' P$parse()
-#' P$getPagesizes()
-#' P$margins <- c(top = 120L, bottom = 1262L, left = 55L, right = 892L)
-#' P$applyMargins()
-#' P$getText()
-#' P$concatenate()
+#' # Basic scenario: A straight-forward pdf without columns;
+#' # it's only page numbers and text on the margins that disturbs
+#' 
+#' cdu_pdf <- system.file(package = "trickypdf", "extdata", "pdf", "cdu.pdf")
+#' P <- PDF$new(filename_pdf = cdu_pdf, first = 7, last = 119)
+#' # P$show_pdf()
+#' P$add_box(box = c(top = 75, height = 700, left = 44, width = 500))
+#' P$remove_unboxed_text()
+#' P$get_text_from_pages()
 #' P$purge()
 #' P$xmlify()
 #' P$as.markdown()
 #' P$as.html()
-#' P$write(filename = "/Users/blaette/Lab/tmp/cdu.xml")
+#' P$browse()
+#' # P$write(filename = "/Users/blaette/Lab/tmp/cdu.xml")
+#' 
+#' 
+#' # Advanced scenario I: Get text from pdf with columns
+#' 
+#' doc <- system.file(package = "trickypdf", "extdata", "pdf", "UN_GeneralAssembly_2016.pdf")
+#' UN <- PDF$new(filename_pdf = doc)
+#' # UN$show_pdf()
+#' UN$add_box(page = NULL, box = c(top = 80, height = 630, left = 50, width = 510))
+#' UN$add_box(page = 1, box = c(top = 233, height = 400, left = 50, width = 500))
+#' UN$remove_unboxed_text()
+#' UN$decolumnize()
+#' UN$get_text_from_pages()
+#' UN$purge()
+#' UN$xmlify()
+#' UN$as.markdown()
+#' UN$as.html()
+#' UN$browse()
+#' 
+#' # Advanced scenario II: Get text from pdf with columns, long version
 #' 
 #' plenaryprotocol <- system.file(package = "pdf2xml", "extdata", "pdf", "18238.pdf")
 #' P <- PDF$new(filename_pdf = plenaryprotocol, first = 5, last = 73)
-#' P$parse()
-#' P$margins <- c(top = 70L, bottom = 1262L, left = 70L, right = 800L)
-#' P$applyMargins()
+#' # P$show_pdf()
+#' P$add_box(c(left = 58, width = 480, top = 70, height = 705))
+#' P$remove_unboxed_text()
 #' P$deviation <- 10L
 #' P$decolumnize()
-#' P$getText()
+#' P$get_text_from_pages()
+#' P$purge()
+#' P$xmlify()
+#' P$as.markdown()
+#' P$as.html()
+#' P$browse()
 #' }
 PDF <- setRefClass(
   
@@ -65,12 +97,14 @@ PDF <- setRefClass(
     xml = "xml_document",
     jitter = "numeric",
     pages = "list",
+    no_pages = "integer",
     margins = "integer",
     deviation = "integer",
     xmlification = "xml_document",
     pagesizes = "data.frame",
     markdown = "character",
-    html = "html"
+    html = "html",
+    boxes = "data.frame"
   ),
   
   methods = list(
@@ -89,15 +123,29 @@ PDF <- setRefClass(
         length(last) == 1,
         length(jitter) == 1
         )
-      .self$first <- as.integer(first)
-      .self$last <- as.integer(last)
+      .self$first <- if (is.na(first)) 1L else as.integer(first)
+      .self$last <- if (is.na(last)) as.integer(PDF_info(filename_pdf)$Pages) else as.integer(last)
       .self$jitter <- jitter
       .self$margins <- margins
+      .self$boxes <- data.frame(
+        page = integer(), left = numeric(), top = numeric(), width = numeric(),
+        height = numeric(), bottom = numeric(), right = numeric()
+      )
+      .self$pdf2xml()
+      .self$get_pagesizes()
+      .self$add_box(box = NULL, page = NULL)
     },
     
-    parse = function(){
+    show_pdf = function(){
       
-      "Parse a pdf document, i.e. turn it into a raw XML document kept in the field xml."
+      "Show the pdf document."
+      
+      browseURL(.self$filename_pdf)
+    },
+    
+    pdf2xml = function(){
+      
+      "Turn pdf document into a raw XML document that will be kept in the field 'xml'."
       
       cmd <- c(
         "pdftohtml",
@@ -114,32 +162,102 @@ PDF <- setRefClass(
       cmd <- paste(cmd, collapse = " ")
       xmlChar <- system(cmd, intern = TRUE)
       .self$xml <- xml2::read_xml(x = paste(xmlChar, collapse = "\n"))
+      .self$no_pages <- length(xml_find_all(.self$xml, xpath = "/pdf2xml/page"))
     },
     
-    applyMargins = function(){
+    make_box = function(box = NULL, page){
       
-      "Remove anything that is printed on pages beyond the margins given."
+      "Generate a box for the data.frame in the field 'boxes'. Coordinates a assumed to
+      be in points and are recalibrated into pdf units."
+      
+      if (is.null(box)){
+        newBox <- data.frame(
+          page = page, left = 0, top = 0,
+          width = .self$pagesizes[page, "width"], height = .self$pagesizes[page, "height"],
+          bottom = .self$pagesizes[page, "height"], right = .self$pagesizes[page, "width"]
+        )
+      } else {
+        stopifnot(all(c("left", "top", "width", "height") %in% names(box)))
+        
+        horizontal <- .self$pagesizes[page, "width"] / .self$pagesizes[page, "width.pts"]
+        vertical <- .self$pagesizes[page, "height"] / .self$pagesizes[page, "height.pts"]
+        
+        newBox <- data.frame(
+          page = page,
+          left = box[["left"]] * horizontal,
+          top = box[["top"]] * vertical,
+          width = box[["width"]] * horizontal,
+          height = box[["height"]] * vertical,
+          bottom = (box[["top"]] + box[["height"]]) * vertical,
+          right = (box[["left"]] + box[["width"]]) * horizontal
+        )
+      }
+      newBox
+    },
+    
+    add_box = function(box = NULL, page = NULL, replace = TRUE){
+      
+      "Add a box that will serve as a crop box."
+      
+      if (is.null(page)){
+        boxList <- lapply(
+          1:nrow(.self$pagesizes),
+          function(i) .self$make_box(box = box, page = i)
+        )
+        newBoxDataFrame <- as.data.frame(do.call(rbind, boxList))
+        if (replace == TRUE){
+          .self$boxes <- newBoxDataFrame
+        } else {
+          .self$boxes <- rbind(.self$boxes, newBoxDataFrame)
+          .self$boxes <- .self$boxes[order(.self$boxes[["page"]])]
+        }
+      } else {
+        for (i in page){
+          newBox <- .self$make_box(box = box, page = page)
+          if (replace == TRUE){
+            .self$boxes <- .self$boxes[-which(.self$boxes[["page"]] == i),]
+            .self$boxes <- rbind(.self$boxes, newBox)
+            .self$boxes <- .self$boxes[order(.self$boxes[["page"]]),]
+          } else {
+            .self$boxes <- rbind(.self$boxes, newBox)
+            .self$boxes <- .self$boxes[order(.self$boxes[["page"]])]
+          }
+        }
+      }
+      invisible(.self$boxes)
+    },
+    
+    remove_unboxed_text = function(box = 1){
+      
+      "Remove anything that is printed on pages beyond the box given."
       
       pageNodes <- xml2::xml_find_all(.self$xml, xpath = "/pdf2xml/page")
       lapply(
-        pageNodes, # iterate through pages
-        function(page){
-          textNodes <- xml2::xml_find_all(page, xpath = "./text")
+        1:length(pageNodes), # iterate through pages
+        function(i){
+          boxesDataFrame <- .self$boxes[which(.self$boxes[["page"]] == i),]
+          boxList <- lapply(1:nrow(boxesDataFrame), function(j) as.vector(boxesDataFrame[j,]))
+          textNodes <- xml2::xml_find_all(pageNodes[[i]], xpath = "./text")
           lapply(
             textNodes, # iterate through text nodes
             function(textNode){
-              textNodeAttrs <- xml2::xml_attrs(textNode)
-              textNodeAttrs <- setNames(as.integer(textNodeAttrs), names(textNodeAttrs))
-              if (
-                textNodeAttrs["top"] > .self$margins["top"]
-                && textNodeAttrs["top"] < .self$margins["bottom"]
-                && textNodeAttrs["left"] > .self$margins["left"]
-                && textNodeAttrs["left"] < .self$margins["right"]
-              ){
-                # do nothing, text node is within margins
-              } else {
-                xml2::xml_remove(textNode)
-              }
+              position <- xml2::xml_attrs(textNode)
+              position <- setNames(as.integer(position), names(position))
+              boxed <- sapply(
+                boxList,
+                function(box){
+                  if (
+                    position["top"] > box["top"] && position["top"] < box["bottom"]
+                    && position["left"] > box["left"] && position["left"] < box["right"]
+                  ) {
+                    TRUE
+                  } else {
+                    FALSE
+                  }
+                }
+              )
+              if (any(boxed) == FALSE) xml2::xml_remove(textNode) # if not in any of the boxes: remove textNode
+              
             }
           )
         }
@@ -149,7 +267,11 @@ PDF <- setRefClass(
     
     decolumnize = function(){
       
-      "Do away with columns, if pages include two columns."
+      "Remove columnization, if pages are typeset with two columns. Muli-column layouts
+      with three or more columns are not supported so far. The procedure adjusts the
+      coordinates of text right of the the horizontal page center, i.e. the page height
+      is added to the top position, and half of the page width substracted from the
+      left position."
       
       pageNodes <- xml2::xml_find_all(.self$xml, xpath = "/pdf2xml/page")
       lapply(
@@ -165,11 +287,11 @@ PDF <- setRefClass(
           lapply(
             textNodes, # iterate through text nodes
             function(textNode){
-              textNodeAttrs <- xml2::xml_attrs(textNode)
-              textNodeAttrs <- setNames(as.integer(textNodeAttrs), names(textNodeAttrs))
-              if (as.numeric(textNodeAttrs["left"]) > pageCenter ){
-                xml2::xml_attrs(textNode)["left"] <- textNodeAttrs["left"] - pageCenter
-                xml2::xml_attrs(textNode)["top"] <- textNodeAttrs["top"] + pageHeight
+              position <- xml2::xml_attrs(textNode)
+              position <- setNames(as.integer(position), names(position))
+              if (as.numeric(position["left"]) > pageCenter ){
+                xml2::xml_attrs(textNode)["left"] <- position["left"] - pageCenter
+                xml2::xml_attrs(textNode)["top"] <- position["top"] + pageHeight
               }
             }
           )
@@ -178,22 +300,29 @@ PDF <- setRefClass(
       invisible()
     },
     
-    getPagesizes = function(){
+    get_pagesizes = function(){
       
-      "Get page width and height."
+      "Get page width and height (points/pts and pdf units). The pdf units are extracted from
+      the xmlified pdf document. To get sizes in points (pts), PDF_info (package Rpoppler) is
+      used. The result is a data.frame in the field pagesizes. The method is called when parsing
+      the pdf document."
       
-      xmlAttrsPages <- lapply(
-        xml2::xml_find_all(.self$xml, xpath = "/pdf2xml/page"),
-        function(page) xml_attrs(page)
-      )
+      # get width and height (pdf units)
+      xmlAttrsPages <- lapply(xml2::xml_find_all(.self$xml, xpath = "/pdf2xml/page"), xml_attrs)
       .self$pagesizes <- as.data.frame(do.call(rbind, xmlAttrsPages), stringsAsFactors = FALSE)
-      for (what in c("number", "top", "left", "height", "width")){
+      colnames(.self$pagesizes)[which(colnames(.self$pagesizes) == "number")] <- "page"
+      for (what in c("page", "top", "left", "height", "width")){
         .self$pagesizes[[what]] <- as.integer(.self$pagesizes[[what]])
       }
+      
+      sizes <- stri_extract_all(str = Rpoppler::PDF_info(.self$filename_pdf)$Sizes, regex = "\\d+(\\.\\d+|)")
+      sizes.pts <- do.call(rbind, lapply(sizes, as.numeric))[.self$first:.self$last, 1:2]
+      colnames(sizes.pts) <- c("width.pts", "height.pts")
+      .self$pagesizes <- cbind(.self$pagesizes, sizes.pts)
       invisible(.self$pagesizes)
     },
     
-    getText = function(){
+    get_text_from_pages = function(paragraphs = TRUE){
       
       "Extract text from pages."
       
@@ -220,9 +349,54 @@ PDF <- setRefClass(
               }
             }
           }
-          txt[order(txtPosition)] # if order of text nodes is screwed up
+          txt <- txt[order(txtPosition)] # if order of text nodes is screwed up
+          if (paragraphs) txt <- .self$as.paragraphs(txt)
+          txt
         }
       )
+    },
+    
+    as.paragraphs = function(x, skipRegexCurrent = "^\\s*[A-Z(]", skipRegexPrevious = "[\\.?!)]\\s*$"){
+      
+      "Reconstruct paragraphs from a character vector with line breaks and word-wraps.
+      The heuristic is as follows: If a line ends with a hyphenation and the next line
+      starts with a small letter, remove hyphen and concatenate word."
+      
+      if (length(x) > 2){
+        for (i in length(x):2){
+          if (nchar(x[i-1]) < 40 && grepl(skipRegexPrevious, x[i-1]) == TRUE){
+            # do nothing if preceding line ist short and ends with a satzzeichen
+          } else {
+            if (grepl("-\\s*$", x[i-1]) && grepl(skipRegexCurrent, x[i]) == FALSE){
+              x[i-1] <- gsub("-\\s*$", "", x[i-1]) # remove hyphen
+              x[i-1] <- paste(x[i-1], x[i], sep = "")
+              x <- x[-i]
+            } else {
+              x[i-1] <- paste(x[i-1], x[i], sep = " ")
+              x <- x[-i]
+            }
+          }
+        }
+      }
+      x
+    },
+    
+    reorder = function(){
+      
+      "Reorder text nodes on a page. Not yet functional!"
+      
+      .self$xml <- pblapply(
+        xml_find_all(.self$xmlification, xpath = "/document/page"),
+        function(page){
+          
+        }
+      )
+    },
+    
+    cut = function(){
+      
+      "Cut the document until a match with a regex occurs. Not yet working!"
+      
     },
     
     concatenate = function(){
@@ -230,28 +404,7 @@ PDF <- setRefClass(
       "Reconstruct paragraphs based on the following heuristic: If a line ends with a hyphen
       and is not stump, lines are concatenated."
       
-      .self$pages <- pblapply(
-        .self$pages,
-        function(lines){
-          if (length(lines) > 2){
-            for (i in length(lines):2){
-              if (nchar(lines[i-1]) < 40 && grepl("[\\.?!]\\s*$", lines[i-1]) == TRUE){
-                # do nothing if preceding line ist short and ends with a satzzeichen
-              } else {
-                if (grepl("-\\s*$", lines[i-1]) && grepl("^\\s*[A-Z]", lines[i]) == FALSE){
-                  lines[i-1] <- gsub("-\\s*$", "", lines[i-1]) # remove hyphen
-                  lines[i-1] <- paste(lines[i-1], lines[i], sep = "")
-                  lines <- lines[-i]
-                } else {
-                  lines[i-1] <- paste(lines[i-1], lines[i], sep = " ")
-                  lines <- lines[-i]
-                }
-              }
-            }
-          }
-          lines
-        }
-      )
+      .self$pages <- pblapply(.self$pages, .self$as.paragraph)
     },
     
     purge = function(){
@@ -300,6 +453,9 @@ PDF <- setRefClass(
     },
     
     as.markdown = function(){
+      
+      "Turn xmlified document into markdown (will be stored in field 'markdown')."
+      
       pagesMarkdown <- lapply(
         xml_find_all(.self$xmlification, xpath = "/document/page"),
         function(page){
@@ -315,6 +471,10 @@ PDF <- setRefClass(
     },
     
     as.html = function(){
+      
+      "Turn markdown (field 'markdown') into html document that will be stored in the field 'html'."
+      
+      if (length(.self$markdown) == 0) .self$as.markdown()
       mdFilename <- tempfile(fileext = ".md")
       htmlFile <- tempfile(fileext = ".html")
       cat(.self$markdown, file = mdFilename)
@@ -325,13 +485,17 @@ PDF <- setRefClass(
       invisible(.self$html)
     },
     
-    browse = function(){
-      htmltools::html_print(.self$html)
+    browse = function(viewer = getOption("viewer", utils::browseURL)){
+      
+      "Show html document in browser."
+      
+      if (is.null(.self$html)) .self$as.html()
+      htmltools::html_print(.self$html, viewer = viewer)
     },
     
     write = function(filename){
       
-      "Save xmlified document to a file."
+      "Save xmlified document (available in the field 'xmlification') to a file."
       
       write_xml(.self$xmlification, file = filename)
     }

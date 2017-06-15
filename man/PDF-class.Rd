@@ -22,6 +22,8 @@
 \item{metadata}{named character vector, attribtutes of root node of output xml document}
 
 \item{filename}{character vector}
+
+\item{viewer}{the viewer to use to inspect pdf or html documents}
 }
 \description{
 To get the margins of the text: Use Rechteckige Auswahl, and Werkzeuge/Allgemeine Informationen
@@ -48,54 +50,112 @@ To get the margins of the text: Use Rechteckige Auswahl, and Werkzeuge/Allgemein
 \item{\code{deviation}}{allowed deviation of columns from page center}
 
 \item{\code{xmlification}}{xml to output}
+
+\item{\code{no_pages}}{number of pages of the pdf document (after pdf2xml)}
 }}
 
 \section{Methods}{
 
 \describe{
-\item{\code{applyMargins()}}{Remove anything that is printed on pages beyond the margins given.}
+\item{\code{add_box(box = NULL, page = NULL, replace = TRUE)}}{Add a box that will serve as a crop box.}
+
+\item{\code{as.html()}}{Turn markdown (field 'markdown') into html document that will be stored in the field 'html'.}
+
+\item{\code{as.markdown()}}{Turn xmlified document into markdown (will be stored in field 'markdown').}
+
+\item{\code{as.paragraphs(x, skipRegexCurrent = "^\\\\s*[A-Z(]",
+  skipRegexPrevious = "[\\\\.?!)]\\\\s*$")}}{Reconstruct paragraphs from a character vector with line breaks and word-wraps.
+The heuristic is as follows: If a line ends with a hyphenation and the next line
+starts with a small letter, remove hyphen and concatenate word.}
+
+\item{\code{browse(viewer = getOption("viewer", utils::browseURL))}}{Show html document in browser.}
 
 \item{\code{concatenate()}}{Reconstruct paragraphs based on the following heuristic: If a line ends with a hyphen
 and is not stump, lines are concatenated.}
 
-\item{\code{decolumnize()}}{Do away with columns, if pages include two columns.}
+\item{\code{decolumnize()}}{Remove columnization, if pages are typeset with two columns. Muli-column layouts
+with three or more columns are not supported so far. The procedure adjusts the
+coordinates of text right of the the horizontal page center, i.e. the page height
+is added to the top position, and half of the page width substracted from the
+left position.}
 
-\item{\code{getPagesizes()}}{Get page width and height.}
+\item{\code{get_pagesizes()}}{Get page width and height (points/pts and pdf units). The pdf units are extracted from
+the xmlified pdf document. To get sizes in points (pts), PDF_info (package Rpoppler) is
+used. The result is a data.frame in the field pagesizes. The method is called when parsing
+the pdf document.}
 
-\item{\code{getText()}}{Extract text from pages.}
+\item{\code{get_text_from_pages(paragraphs = TRUE)}}{Extract text from pages.}
 
 \item{\code{initialize(filename_pdf, first = NA, last = NA, jitter = 2,
   deviation = 10L, margins = integer())}}{Initialize a new instance of the class PDF to process a pdf document.}
 
-\item{\code{parse()}}{Parse a pdf document, i.e. turn it into a raw XML document kept in the field xml.}
+\item{\code{make_box(box = NULL, page)}}{Generate a box for the data.frame in the field 'boxes'. Coordinates a assumed to
+be in points and are recalibrated into pdf units.}
+
+\item{\code{pdf2xml()}}{Turn pdf document into a raw XML document that will be kept in the field 'xml'.}
 
 \item{\code{purge()}}{Remove noise, surplus whitespace signs from the text.}
 
-\item{\code{write(filename)}}{Save xmlified document to a file.}
+\item{\code{remove_unboxed_text(box = 1)}}{Remove anything that is printed on pages beyond the box given.}
+
+\item{\code{reorder()}}{Reorder text nodes on a page. Not yet functional!}
+
+\item{\code{show_pdf()}}{Show the pdf document.}
+
+\item{\code{write(filename)}}{Save xmlified document (available in the field 'xmlification') to a file.}
 
 \item{\code{xmlify(root = "document", metadata = NULL)}}{Turn text in the pages fild into a XML document.}
 }}
 
 \examples{
 \dontrun{
-P <- PDF$new(filename_pdf = "/Users/blaette/Lab/tmp/cdu.pdf", first = 7, last = 119)
-P$parse()
-P$getPagesizes()
-P$margins <- c(top = 120L, bottom = 1262L, left = 55L, right = 892L)
-P$applyMargins()
-P$getText()
-P$concatenate()
+# Basic scenario: A straight-forward pdf without columns;
+# it's only page numbers and text on the margins that disturbs
+
+cdu_pdf <- system.file(package = "trickypdf", "extdata", "pdf", "cdu.pdf")
+P <- PDF$new(filename_pdf = cdu_pdf, first = 7, last = 119)
+# P$show_pdf()
+P$add_box(box = c(top = 75, height = 700, left = 44, width = 500))
+P$remove_unboxed_text()
+P$get_text_from_pages()
 P$purge()
 P$xmlify()
-P$write(filename = "/Users/blaette/Lab/tmp/cdu.xml")
+P$as.markdown()
+P$as.html()
+P$browse()
+# P$write(filename = "/Users/blaette/Lab/tmp/cdu.xml")
+
+
+# Advanced scenario I: Get text from pdf with columns
+
+doc <- system.file(package = "trickypdf", "extdata", "pdf", "UN_GeneralAssembly_2016.pdf")
+UN <- PDF$new(filename_pdf = doc)
+# UN$show_pdf()
+UN$add_box(page = NULL, box = c(top = 80, height = 630, left = 50, width = 510))
+UN$add_box(page = 1, box = c(top = 233, height = 400, left = 50, width = 500))
+UN$remove_unboxed_text()
+UN$decolumnize()
+UN$get_text_from_pages()
+UN$purge()
+UN$xmlify()
+UN$as.markdown()
+UN$as.html()
+UN$browse()
+
+# Advanced scenario II: Get text from pdf with columns, long version
 
 plenaryprotocol <- system.file(package = "pdf2xml", "extdata", "pdf", "18238.pdf")
 P <- PDF$new(filename_pdf = plenaryprotocol, first = 5, last = 73)
-P$parse()
-P$margins <- c(top = 70L, bottom = 1262L, left = 70L, right = 800L)
-P$applyMargins()
+# P$show_pdf()
+P$add_box(c(left = 58, width = 480, top = 70, height = 705))
+P$remove_unboxed_text()
 P$deviation <- 10L
 P$decolumnize()
-P$getText()
+P$get_text_from_pages()
+P$purge()
+P$xmlify()
+P$as.markdown()
+P$as.html()
+P$browse()
 }
 }

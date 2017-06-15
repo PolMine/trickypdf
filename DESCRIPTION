@@ -1,6 +1,6 @@
-Package: pdf2xml
+Package: trickypdf
 Type: Package
-Title: Turn pdf into xml for corpus preparation
+Title: Turn tricky pdf into txt/xml for corpus preparation
 Version: 0.1.0
 Date: 2017-06-11
 Author: Andreas Blaette
@@ -10,7 +10,11 @@ Depends:
 Imports:
     methods,
     xml2,
-    pbapply
+    pbapply,
+    Rpoppler,
+    htmltools,
+    markdown,
+    stringi
 Suggests:
 VignetteBuilder: knitr
 LazyData: yes
