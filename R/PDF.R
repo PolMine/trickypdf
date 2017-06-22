@@ -33,6 +33,7 @@ setOldClass("html")
 #' @importFrom Rpoppler PDF_info
 #' @importFrom stringi stri_extract_all
 #' @importFrom markdown markdownToHTML
+#' @importFrom plyr ldply
 #' @rdname PDF-class
 #' @name PDF
 #' @export PDF
@@ -45,7 +46,7 @@ setOldClass("html")
 #' P <- PDF$new(filename_pdf = cdu_pdf, first = 7, last = 119)
 #' # P$show_pdf()
 #' P$add_box(box = c(top = 75, height = 700, left = 44, width = 500))
-#' P$remove_unboxed_text()
+#' P$remove_unboxed_text_from_all_pages()
 #' P$get_text_from_pages()
 #' P$purge()
 #' P$xmlify()
@@ -55,17 +56,16 @@ setOldClass("html")
 #' # P$write(filename = "/Users/blaette/Lab/tmp/cdu.xml")
 #' 
 #' 
-#' # Advanced scenario I: Get text from pdf with columns
+#' # Advanced scenario I: Get text from pdf with columns, here: define boxes
 #' 
 #' doc <- system.file(package = "trickypdf", "extdata", "pdf", "UN_GeneralAssembly_2016.pdf")
 #' UN <- PDF$new(filename_pdf = doc)
 #' # UN$show_pdf()
-#' UN$add_box(page = NULL, box = c(top = 80, height = 630, left = 50, width = 510))
-#' UN$add_box(page = 1, box = c(top = 233, height = 400, left = 50, width = 500))
-#' UN$remove_unboxed_text()
-#' UN$decolumnize()
-#' UN$get_text_from_pages()
-#' UN$purge()
+#' UN$add_box(page = 1, box = c(top = 380, height = 250, left = 52, width = 255))
+#' UN$add_box(page = 1, box = c(top = 232, height = 400, left = 303, width = 255), replace = FALSE)
+#' UN$add_box(page = 2, box = c(top = 80, height = 595, left = 52, width = 255))
+#' UN$add_box(page = 2, box = c(top = 80, height = 595, left = 303, width = 255), replace = FALSE)
+#' UN$get_text_from_boxes(paragraphs = TRUE)
 #' UN$xmlify()
 #' UN$as.markdown()
 #' UN$as.html()
@@ -77,7 +77,7 @@ setOldClass("html")
 #' P <- PDF$new(filename_pdf = plenaryprotocol, first = 5, last = 73)
 #' # P$show_pdf()
 #' P$add_box(c(left = 58, width = 480, top = 70, height = 705))
-#' P$remove_unboxed_text()
+#' P$remove_unboxed_text_from_all_pages()
 #' P$deviation <- 10L
 #' P$decolumnize()
 #' P$get_text_from_pages()
@@ -221,46 +221,57 @@ PDF <- setRefClass(
             .self$boxes <- .self$boxes[order(.self$boxes[["page"]]),]
           } else {
             .self$boxes <- rbind(.self$boxes, newBox)
-            .self$boxes <- .self$boxes[order(.self$boxes[["page"]])]
+            .self$boxes <- .self$boxes[order(.self$boxes[["page"]]),]
           }
         }
       }
       invisible(.self$boxes)
     },
     
-    remove_unboxed_text = function(box = 1){
+    drop_unboxed_text_nodes = function(node, boxes, copy = FALSE){
       
-      "Remove anything that is printed on pages beyond the box given."
+      "Remove any nodes that are not within defined boxes."
       
-      pageNodes <- xml2::xml_find_all(.self$xml, xpath = "/pdf2xml/page")
+      if (copy){
+        node_returned <- xml_new_root(node, .copy = TRUE)
+      } else {
+        node_returned <- node
+      }
       lapply(
-        1:length(pageNodes), # iterate through pages
+        xml2::xml_find_all(node_returned, xpath = "//text"),
+        function(text_node){
+          position <- xml2::xml_attrs(text_node)
+          position <- setNames(as.integer(position), names(position))
+          boxed <- sapply(
+            boxes,
+            function(box){
+              if (
+                position["top"] > box["top"] && position["top"] < box["bottom"]
+                && position["left"] > box["left"] && position["left"] < box["right"]
+              ) {
+                TRUE
+              } else {
+                FALSE
+              }
+            }
+          )
+          if (any(boxed) == FALSE) xml2::xml_remove(text_node) # if not in any of the boxes: remove textNode
+        }
+      )
+      node_returned
+    },
+    
+    remove_unboxed_text_from_all_pages = function(){
+      
+      "Remove anything that is printed on pages beyond the defined boxes."
+      
+      page_nodes <- xml2::xml_find_all(.self$xml, xpath = "/pdf2xml/page")
+      lapply(
+        1:length(page_nodes), # iterate through pages
         function(i){
           boxesDataFrame <- .self$boxes[which(.self$boxes[["page"]] == i),]
           boxList <- lapply(1:nrow(boxesDataFrame), function(j) as.vector(boxesDataFrame[j,]))
-          textNodes <- xml2::xml_find_all(pageNodes[[i]], xpath = "./text")
-          lapply(
-            textNodes, # iterate through text nodes
-            function(textNode){
-              position <- xml2::xml_attrs(textNode)
-              position <- setNames(as.integer(position), names(position))
-              boxed <- sapply(
-                boxList,
-                function(box){
-                  if (
-                    position["top"] > box["top"] && position["top"] < box["bottom"]
-                    && position["left"] > box["left"] && position["left"] < box["right"]
-                  ) {
-                    TRUE
-                  } else {
-                    FALSE
-                  }
-                }
-              )
-              if (any(boxed) == FALSE) xml2::xml_remove(textNode) # if not in any of the boxes: remove textNode
-              
-            }
-          )
+          .self$drop_unboxed_text_nodes(node = page_nodes[[i]], boxes = boxList)
         }
       )
       invisible()
@@ -323,36 +334,65 @@ PDF <- setRefClass(
       invisible(.self$pagesizes)
     },
     
+    get_text = function(node, paragraphs = TRUE){
+      text_nodes <- xml2::xml_find_all(node, xpath = "./text")
+      txt <- character()
+      txtPosition <- integer()
+      counter <- 1L
+      for (i in 1:length(text_nodes)){
+        if (i == 1){
+          txt[1] <- xml2::xml_text(text_nodes[[i]])
+          txtPosition[1] <- as.integer(xml2::xml_attrs(text_nodes[[i]])["top"])
+        } else if ( i > 1 ){
+          topCurrentNode <- as.integer(xml2::xml_attrs(text_nodes[[i]])["top"])
+          topPreviousNode <- as.integer(xml2::xml_attrs(text_nodes[[i-1]])["top"])
+          if (abs(topCurrentNode - topPreviousNode) > .self$jitter) {
+            counter <- counter + 1L
+            txt[counter] <- xml2::xml_text(text_nodes[[i]])
+            txtPosition[counter] <- topCurrentNode
+          } else {
+            txt[counter] <- paste(txt[counter], xml2::xml_text(text_nodes[[i]]), sep = "")
+          }
+        }
+      }
+      txt <- txt[order(txtPosition)] # if order of text nodes is screwed up
+      if (paragraphs) txt <- .self$as.paragraphs(txt)
+      
+    },
+    
     get_text_from_pages = function(paragraphs = TRUE){
       
       "Extract text from pages."
       
       .self$pages <- lapply(
         xml2::xml_find_all(.self$xml, xpath = "/pdf2xml/page"),
-        function(page){
-          txt <- character()
-          txtPosition <- integer()
-          textNodes <- xml2::xml_find_all(page, xpath = "./text")
-          counter <- 1L
-          for (i in 1:length(textNodes)){
-            if (i == 1){
-              txt[1] <- xml2::xml_text(textNodes[[i]])
-              txtPosition[1] <- as.integer(xml2::xml_attrs(textNodes[[i]])["top"])
-            } else if ( i > 1 ){
-              topCurrentNode <- as.integer(xml2::xml_attrs(textNodes[[i]])["top"])
-              topPreviousNode <- as.integer(xml2::xml_attrs(textNodes[[i-1]])["top"])
-              if (abs(topCurrentNode - topPreviousNode) > .self$jitter) {
-                counter <- counter + 1L
-                txt[counter] <- xml2::xml_text(textNodes[[i]])
-                txtPosition[counter] <- topCurrentNode
-              } else {
-                txt[counter] <- paste(txt[counter], xml2::xml_text(textNodes[[i]]), sep = "")
-              }
+        function(page) .self$get_text(page, paragraphs = paragraphs)
+      )
+    },
+    
+    get_text_from_boxes = function(paragraphs){
+      
+      "Iterate through pages, and extract text as defined by boxes from pages. The result
+      will be assigned to field 'pages'."
+      
+      page_nodes <- xml2::xml_find_all(.self$xml, xpath = "/pdf2xml/page")
+      .self$pages <- dlply(
+        .data = .self$boxes, .variables = .(page), # create sub-data.frames for bages
+        .fun = function(df){
+          df[["box_id"]] <- 1:nrow(df)
+          page_no <- unique(df[["page"]])
+          dlply(
+            .data = df, .variables = .(box_id),
+            .fun = function(df2){
+              page_node <- xml_new_root(page_nodes[[ df2[["page"]] ]], .copy = TRUE)
+              box_list <- lapply(
+                1:nrow(df2),
+                function(j) setNames(as.numeric(df2[j,]), colnames(df2))
+                )
+              node_page <- .self$drop_unboxed_text_nodes(node = page_node, box_list, copy = TRUE)
+              .self$get_text(node_page, paragraphs = paragraphs)
             }
-          }
-          txt <- txt[order(txtPosition)] # if order of text nodes is screwed up
-          if (paragraphs) txt <- .self$as.paragraphs(txt)
-          txt
+          )
         }
       )
     },
