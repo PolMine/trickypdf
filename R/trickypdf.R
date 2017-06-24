@@ -10,6 +10,6 @@
 #' @keywords package
 #' @docType package
 #' @import knitr
-#' @rdname pdf2xml-package
-#' @name pdf2xml
+#' @rdname trickypdf-package
+#' @name trickypdf
 NULL

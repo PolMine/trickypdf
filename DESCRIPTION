@@ -14,7 +14,8 @@ Imports:
     Rpoppler,
     htmltools,
     markdown,
-    stringi
+    stringi,
+    plyr
 Suggests:
 VignetteBuilder: knitr
 LazyData: yes
@@ -26,5 +27,6 @@ License: GPL-3
 URL: https://www.github.com/PolMine/pdf2xml
 Collate: 
     'PDF.R'
-    'pdf2xml.R'
+    'trickypdf.R'
+    'utils.R'
 RoxygenNote: 6.0.1

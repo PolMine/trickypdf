@@ -59,15 +59,6 @@ To get the margins of the text: Use Rechteckige Auswahl, and Werkzeuge/Allgemein
 \describe{
 \item{\code{add_box(box = NULL, page = NULL, replace = TRUE)}}{Add a box that will serve as a crop box.}
 
-\item{\code{as.html()}}{Turn markdown (field 'markdown') into html document that will be stored in the field 'html'.}
-
-\item{\code{as.markdown()}}{Turn xmlified document into markdown (will be stored in field 'markdown').}
-
-\item{\code{as.paragraphs(x, skipRegexCurrent = "^\\\\s*[A-Z(]",
-  skipRegexPrevious = "[\\\\.?!)]\\\\s*$")}}{Reconstruct paragraphs from a character vector with line breaks and word-wraps.
-The heuristic is as follows: If a line ends with a hyphenation and the next line
-starts with a small letter, remove hyphen and concatenate word.}
-
 \item{\code{browse(viewer = getOption("viewer", utils::browseURL))}}{Show html document in browser.}
 
 \item{\code{concatenate()}}{Reconstruct paragraphs based on the following heuristic: If a line ends with a hyphen
@@ -79,10 +70,18 @@ coordinates of text right of the the horizontal page center, i.e. the page heigh
 is added to the top position, and half of the page width substracted from the
 left position.}
 
+\item{\code{drop_unboxed_text_nodes(node, boxes, copy = FALSE)}}{Remove any nodes that are not within defined boxes.}
+
+\item{\code{find(regex)}}{Find matches for regex on pages. The method returns the pages with at least one
+match for the regex.}
+
 \item{\code{get_pagesizes()}}{Get page width and height (points/pts and pdf units). The pdf units are extracted from
 the xmlified pdf document. To get sizes in points (pts), PDF_info (package Rpoppler) is
 used. The result is a data.frame in the field pagesizes. The method is called when parsing
 the pdf document.}
+
+\item{\code{get_text_from_boxes(paragraphs)}}{Iterate through pages, and extract text as defined by boxes from pages. The result
+will be assigned to field 'pages'.}
 
 \item{\code{get_text_from_pages(paragraphs = TRUE)}}{Extract text from pages.}
 
@@ -92,11 +91,13 @@ the pdf document.}
 \item{\code{make_box(box = NULL, page)}}{Generate a box for the data.frame in the field 'boxes'. Coordinates a assumed to
 be in points and are recalibrated into pdf units.}
 
+\item{\code{md2html()}}{Turn markdown (field 'markdown') into html document that will be stored in the field 'html'.}
+
 \item{\code{pdf2xml()}}{Turn pdf document into a raw XML document that will be kept in the field 'xml'.}
 
 \item{\code{purge()}}{Remove noise, surplus whitespace signs from the text.}
 
-\item{\code{remove_unboxed_text(box = 1)}}{Remove anything that is printed on pages beyond the box given.}
+\item{\code{remove_unboxed_text_from_all_pages()}}{Remove anything that is printed on pages beyond the defined boxes.}
 
 \item{\code{reorder()}}{Reorder text nodes on a page. Not yet functional!}
 
@@ -104,7 +105,11 @@ be in points and are recalibrated into pdf units.}
 
 \item{\code{write(filename)}}{Save xmlified document (available in the field 'xmlification') to a file.}
 
-\item{\code{xmlify(root = "document", metadata = NULL)}}{Turn text in the pages fild into a XML document.}
+\item{\code{xml2html()}}{Turn xmlification of pdf document into html document.}
+
+\item{\code{xml2md()}}{Turn xmlified document into markdown (will be stored in field 'markdown').}
+
+\item{\code{xmlify(root = "document", metadata = NULL)}}{Turn text in the pages field into a XML document.}
 }}
 
 \examples{
@@ -116,46 +121,43 @@ cdu_pdf <- system.file(package = "trickypdf", "extdata", "pdf", "cdu.pdf")
 P <- PDF$new(filename_pdf = cdu_pdf, first = 7, last = 119)
 # P$show_pdf()
 P$add_box(box = c(top = 75, height = 700, left = 44, width = 500))
-P$remove_unboxed_text()
+P$remove_unboxed_text_from_all_pages()
 P$get_text_from_pages()
 P$purge()
 P$xmlify()
-P$as.markdown()
-P$as.html()
+P$xml2html()
 P$browse()
-# P$write(filename = "/Users/blaette/Lab/tmp/cdu.xml")
+output <- tempfile(fileext = ".xml")
+P$write(filename = output)
 
 
-# Advanced scenario I: Get text from pdf with columns
+# Advanced scenario I: Get text from pdf with columns, here: define boxes
 
 doc <- system.file(package = "trickypdf", "extdata", "pdf", "UN_GeneralAssembly_2016.pdf")
 UN <- PDF$new(filename_pdf = doc)
 # UN$show_pdf()
-UN$add_box(page = NULL, box = c(top = 80, height = 630, left = 50, width = 510))
-UN$add_box(page = 1, box = c(top = 233, height = 400, left = 50, width = 500))
-UN$remove_unboxed_text()
-UN$decolumnize()
-UN$get_text_from_pages()
-UN$purge()
+UN$add_box(page = 1, box = c(top = 380, height = 250, left = 52, width = 255))
+UN$add_box(page = 1, box = c(top = 232, height = 400, left = 303, width = 255), replace = FALSE)
+UN$add_box(page = 2, box = c(top = 80, height = 595, left = 52, width = 255))
+UN$add_box(page = 2, box = c(top = 80, height = 595, left = 303, width = 255), replace = FALSE)
+UN$get_text_from_boxes(paragraphs = TRUE)
 UN$xmlify()
-UN$as.markdown()
-UN$as.html()
+UN$xml2html()
 UN$browse()
 
 # Advanced scenario II: Get text from pdf with columns, long version
 
-plenaryprotocol <- system.file(package = "pdf2xml", "extdata", "pdf", "18238.pdf")
+plenaryprotocol <- system.file(package = "trickypdf", "extdata", "pdf", "18238.pdf")
 P <- PDF$new(filename_pdf = plenaryprotocol, first = 5, last = 73)
 # P$show_pdf()
 P$add_box(c(left = 58, width = 480, top = 70, height = 705))
-P$remove_unboxed_text()
+P$remove_unboxed_text_from_all_pages()
 P$deviation <- 10L
 P$decolumnize()
 P$get_text_from_pages()
 P$purge()
 P$xmlify()
-P$as.markdown()
-P$as.html()
+P$xml2html()
 P$browse()
 }
 }

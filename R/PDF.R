@@ -50,10 +50,10 @@ setOldClass("html")
 #' P$get_text_from_pages()
 #' P$purge()
 #' P$xmlify()
-#' P$as.markdown()
-#' P$as.html()
+#' P$xml2html()
 #' P$browse()
-#' # P$write(filename = "/Users/blaette/Lab/tmp/cdu.xml")
+#' output <- tempfile(fileext = ".xml")
+#' P$write(filename = output)
 #' 
 #' 
 #' # Advanced scenario I: Get text from pdf with columns, here: define boxes
@@ -67,13 +67,12 @@ setOldClass("html")
 #' UN$add_box(page = 2, box = c(top = 80, height = 595, left = 303, width = 255), replace = FALSE)
 #' UN$get_text_from_boxes(paragraphs = TRUE)
 #' UN$xmlify()
-#' UN$as.markdown()
-#' UN$as.html()
+#' UN$xml2html()
 #' UN$browse()
 #' 
 #' # Advanced scenario II: Get text from pdf with columns, long version
 #' 
-#' plenaryprotocol <- system.file(package = "pdf2xml", "extdata", "pdf", "18238.pdf")
+#' plenaryprotocol <- system.file(package = "trickypdf", "extdata", "pdf", "18238.pdf")
 #' P <- PDF$new(filename_pdf = plenaryprotocol, first = 5, last = 73)
 #' # P$show_pdf()
 #' P$add_box(c(left = 58, width = 480, top = 70, height = 705))
@@ -83,8 +82,7 @@ setOldClass("html")
 #' P$get_text_from_pages()
 #' P$purge()
 #' P$xmlify()
-#' P$as.markdown()
-#' P$as.html()
+#' P$xml2html()
 #' P$browse()
 #' }
 PDF <- setRefClass(
@@ -266,12 +264,13 @@ PDF <- setRefClass(
       "Remove anything that is printed on pages beyond the defined boxes."
       
       page_nodes <- xml2::xml_find_all(.self$xml, xpath = "/pdf2xml/page")
-      lapply(
+      pblapply(
         1:length(page_nodes), # iterate through pages
         function(i){
           boxesDataFrame <- .self$boxes[which(.self$boxes[["page"]] == i),]
           boxList <- lapply(1:nrow(boxesDataFrame), function(j) as.vector(boxesDataFrame[j,]))
-          .self$drop_unboxed_text_nodes(node = page_nodes[[i]], boxes = boxList)
+          node_new <- .self$drop_unboxed_text_nodes(node = page_nodes[[i]], boxes = boxList, copy = TRUE)
+          xml_replace(.x = page_nodes[[i]], .value = node_new)
         }
       )
       invisible()
@@ -356,7 +355,7 @@ PDF <- setRefClass(
         }
       }
       txt <- txt[order(txtPosition)] # if order of text nodes is screwed up
-      if (paragraphs) txt <- .self$as.paragraphs(txt)
+      if (paragraphs) txt <- restore_paragraphs(txt)
       
     },
     
@@ -397,29 +396,23 @@ PDF <- setRefClass(
       )
     },
     
-    as.paragraphs = function(x, skipRegexCurrent = "^\\s*[A-Z(]", skipRegexPrevious = "[\\.?!)]\\s*$"){
+    find = function(regex){
       
-      "Reconstruct paragraphs from a character vector with line breaks and word-wraps.
-      The heuristic is as follows: If a line ends with a hyphenation and the next line
-      starts with a small letter, remove hyphen and concatenate word."
+      "Find matches for regex on pages. The method returns the pages with at least one
+      match for the regex."
       
-      if (length(x) > 2){
-        for (i in length(x):2){
-          if (nchar(x[i-1]) < 40 && grepl(skipRegexPrevious, x[i-1]) == TRUE){
-            # do nothing if preceding line ist short and ends with a satzzeichen
-          } else {
-            if (grepl("-\\s*$", x[i-1]) && grepl(skipRegexCurrent, x[i]) == FALSE){
-              x[i-1] <- gsub("-\\s*$", "", x[i-1]) # remove hyphen
-              x[i-1] <- paste(x[i-1], x[i], sep = "")
-              x <- x[-i]
-            } else {
-              x[i-1] <- paste(x[i-1], x[i], sep = " ")
-              x <- x[-i]
-            }
-          }
+      page_nodes <- xml2::xml_find_all(.self$xml, xpath = "/pdf2xml/page")
+      matching <- lapply(
+        1:length(page_nodes), # iterate through pages
+        function(i){
+          match_logical <- sapply(
+            xml2::xml_find_all(page_nodes[[i]], xpath = "./text"),
+            function(text_node) grepl(regex, xml_text(text_node))
+          )
+          any(match_logical)
         }
-      }
-      x
+      )
+      which(matching == TRUE)
     },
     
     reorder = function(){
@@ -445,27 +438,32 @@ PDF <- setRefClass(
       "Reconstruct paragraphs based on the following heuristic: If a line ends with a hyphen
       and is not stump, lines are concatenated."
       
-      .self$pages <- pblapply(.self$pages, .self$as.paragraph)
+      if (typeof(.self$pages[[1]]) == "list"){
+        # option 1: pages include boxes
+        .self$pages <- pblapply(
+          .self$pages,
+          function(page) lapply(page, restore_paragraphs)
+        )
+      } else {
+        .self$pages <- pblapply(.self$pages, restore_paragraphs)
+      }
     },
     
     purge = function(){
       
       "Remove noise, surplus whitespace signs from the text."
       
-      .self$pages <- lapply(
-        .self$pages,
-        function(page){
-          page <- gsub("\uf038", "", page)
-          page <- gsub("\\s+", " ", page)
-          page <- gsub("^\\s*(.*?)\\s*$", "\\1", page)
-          page
-        }
-      )
+      if (typeof(.self$pages[[1]]) == "list"){
+        .self$pages <- lapply(.self$pages, function(page) lapply(page, broom))
+      } else {
+        .self$pages <- lapply(.self$pages, broom)
+      }
+      
     },
     
     xmlify = function(root = "document", metadata = NULL){
       
-      "Turn text in the pages fild into a XML document."
+      "Turn text in the pages field into a XML document."
       
       .self$xmlification <- xml_new_root(.value = root)
       if (!is.null(metadata)){
@@ -483,39 +481,72 @@ PDF <- setRefClass(
           xml2::xml_add_child(.self$xmlification, .value = "page")
           pageNodes <- xml_find_all(.self$xmlification, xpath = sprintf("/%s/page", root))
           newPageNode <- pageNodes[[length(pageNodes)]]
-          lapply(
-            page,
-            function(paragraph) xml_add_child(newPageNode, .value = "p", paragraph)
-          )
+          if (is.list(page)){
+            lapply(
+              1:length(page),
+              function(i){
+                xml2::xml_add_child(newPageNode, .value = "box")
+                boxNodes <- xml_find_all(newPageNode, xpath = "./box")
+                newBoxNode <- boxNodes[[length(boxNodes)]]
+                xml_set_attr(newBoxNode, attr = "n", value = i)
+                lapply(
+                  page[[i]],
+                  function(paragraph) xml_add_child(newBoxNode, .value = "p", paragraph)
+                )
+              }
+            )
+          } else {
+            lapply(
+              page,
+              function(paragraph) xml_add_child(newPageNode, .value = "p", paragraph)
+            )
+          }
           NULL
         }
       )
       invisible(.self$xmlification)
     },
     
-    as.markdown = function(){
+    xml2md = function(){
       
       "Turn xmlified document into markdown (will be stored in field 'markdown')."
       
+      if (length(xml_find_all(.self$xmlification, xpath = "/document/page/box")) > 0){
+        boxed <- TRUE
+      } else {
+        boxed <- FALSE
+      }
       pagesMarkdown <- lapply(
         xml_find_all(.self$xmlification, xpath = "/document/page"),
         function(page){
-          paras <- sapply(
-            xml_find_all(page, xpath = "./p"),
-            function(paragraph) xml_text(paragraph)
-          )
-          paste(paras, collapse = "\n\n")
+          if (boxed == TRUE){
+            box_txt <- lapply(
+              xml_find_all(page, xpath = "./box"),
+              function(box){
+                paras <- sapply(xml_find_all(box, xpath = "./p"), function(para) xml_text(para))
+                paste(paras, collapse = "\n\n")
+              }
+            )
+            txt <- paste(paste(box_txt, collapse = "\n\n---\n\n"), "\n")
+          } else {
+            paras <- sapply(
+              xml_find_all(page, xpath = "./p"),
+              function(paragraph) xml_text(paragraph)
+            )
+            txt <- paste(paras, collapse = "\n\n")
+          }
+          txt
         }
       )
       .self$markdown <- paste(paste(pagesMarkdown, collapse = "\n\n* * *\n\n"), "\n")
       invisible(.self$markdown)
     },
     
-    as.html = function(){
+    md2html = function(){
       
       "Turn markdown (field 'markdown') into html document that will be stored in the field 'html'."
       
-      if (length(.self$markdown) == 0) .self$as.markdown()
+      if (length(.self$markdown) == 0) .self$xml2md()
       mdFilename <- tempfile(fileext = ".md")
       htmlFile <- tempfile(fileext = ".html")
       cat(.self$markdown, file = mdFilename)
@@ -526,11 +557,19 @@ PDF <- setRefClass(
       invisible(.self$html)
     },
     
+    xml2html = function(){
+      
+      "Turn xmlification of pdf document into html document."
+      
+      .self$xml2md()
+      .self$md2html()
+    },
+    
     browse = function(viewer = getOption("viewer", utils::browseURL)){
       
       "Show html document in browser."
       
-      if (is.null(.self$html)) .self$as.html()
+      if (is.null(.self$html)) .self$md2html()
       htmltools::html_print(.self$html, viewer = viewer)
     },
     
