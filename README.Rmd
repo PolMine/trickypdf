@@ -17,20 +17,21 @@ knitr::opts_chunk$set(
 ## Purpose
 
 At a basic level, R users have efficient tools to extract text from pdf documents.
-The [pdftools](https://CRAN.R-project.org/package=pdftools), and the [Rpoppler](https://CRAN.R-project.org/package=Rpoppler) packages are powerful tools.
+The [pdftools](https://CRAN.R-project.org/package=pdftools), and the [Rpoppler](https://CRAN.R-project.org/package=Rpoppler) packages are extremely useful and handy.
 
-The *trickypdf* package offers a class *PDF* to handle tricky problems that reoccurringly
-cause headaches when processing pdf documents with . , i.e.:
+There are couple of issues that may arise when processing pdf that remain tricky. The *trickypdf*-package offers a class *PDF* to handle problems that reoccurringly cause headaches when processing pdf
+documents. The class offers methods to...
 
   * remove stuff outside the main text region (page headers, page numbers etc) as a preprocessing step. 
   * handle multi-column layouts;
   * reconstruct lines of text, if the (OCRed) document has been scanned in tilted fashion;
   * reconstruct paragraphs.
 
-The output will be a valid XML document, with optional document metadata. The XML output
-is meant to serve as the input to a Natural Language Processing (NLP) pipeline. A method to 
+The output will be a valid XML document, with optional document metadata. XML
+is generated to serve as the input to a Natural Language Processing (NLP) pipeline. A method to 
 create browsable html from the xmlified pdf document is meant to assist quality checking in 
-corpus preparation.
+corpus preparation. The package thus makes handling tricky problems with processing pdf
+documents much easier!
 
 ## Installation
 
