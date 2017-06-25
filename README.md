@@ -20,6 +20,45 @@ The output will be a valid XML document, with optional document metadata. The XM
 Installation
 ------------
 
+The package relies on the pdftohtml command line utility that is part of the poppler library. On Linux, installation is easy:
+
+``` sh
+sudo apt-get install -y poppler-utils
+```
+
+On MacOS, it is recommended to use Homebrew as a package manager. To install brew, open a terminal and install Homebrew.
+
+``` sh
+/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+```
+
+The snippet is taken from the [Homebrew website](https://brew.sh). You can then install poppler as follows,
+
+``` sh
+brew install poppler
+```
+
+To check that poppler is installed, check the availability of the pdftohtml command line utility.
+
+``` sh
+pdftohtml -v
+```
+
+The trickypdf-package imports from a set of standard R packages that are available from CRAN using `install.packages`.
+
+``` r
+install.packages(
+  pkgs = c("methods", "xml2", "pbapply", "Rpoppler", "htmltools", "markdown", "stringi", "plyr")
+  )
+```
+
+Finally, trickypdf can be installed from GitHub using devtools.
+
+``` r
+install.packages("devtools") # if you have not yet installed devtools
+devtools::install_github("PolMine/trickypdf")
+```
+
 Usage
 -----
 
