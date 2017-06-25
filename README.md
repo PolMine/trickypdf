@@ -1,15 +1,15 @@
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
 Turn pdf document into XML
 ==========================
 
-This is an experimental package to turn a pdf document document into a XML document
-for further processing in a corpus preparation pipeline.
+This is an experimental package to turn a pdf document document into a XML document for further processing in a corpus preparation pipeline.
 
-The class PDF includes a set of methods to handle somewhat tricky problems that may 
-arise when processing pdf documents:
-- Text outside a region (such as page numbers) can be removed based in coordinates;
-- Two columns can be rearranged so that a two-column-layout can be managed;
-- If the document has been scanned in tilted fashion, lines are reconstructed;
-- Paragraphs can be reconstructed based on a simple heuristic.
+The class PDF includes a set of methods to handle somewhat tricky problems that may arise when processing pdf documents: - Text outside a region (such as page numbers) can be removed based in coordinates; - Two columns can be rearranged so that a two-column-layout can be managed; - If the document has been scanned in tilted fashion, lines are reconstructed; - Paragraphs can be reconstructed based on a simple heuristic.
 
-Comparing pdf2xml to other packages such as poppleR or pdftools, the existing packages
-do not offer the aforementioned pruning and reconstruction capability.
+Comparing pdf2xml to other packages such as poppleR or pdftools, the existing packages do not offer the aforementioned pruning and reconstruction capability.
+
+Contributing to package development
+===================================
+
+Please note that this project is released with a [Contributor Code of Conduct](CONDUCT.md). By participating in this project you agree to abide by its terms.
