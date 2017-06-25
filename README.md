@@ -11,11 +11,8 @@ At a basic level, R users have efficient tools to extract text from pdf document
 The *trickypdf* package offers a class *PDF* to handle tricky problems that reoccurringly cause headaches when processing pdf documents with . , i.e.:
 
 -   remove stuff outside the main text region (page headers, page numbers etc) as a preprocessing step.
-
 -   handle multi-column layouts;
-
 -   reconstruct lines of text, if the (OCRed) document has been scanned in tilted fashion;
-
 -   reconstruct paragraphs.
 
 The output will be a valid XML document, with optional document metadata. The XML output is meant to serve as the input to a Natural Language Processing (NLP) pipeline. A method to create browsable html from the xmlified pdf document is meant to assist quality checking in corpus preparation.
