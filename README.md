@@ -73,62 +73,85 @@ As a sample document, the package includes the United Nations Millenium Declarat
 
 ``` r
 doc <- system.file(package = "trickypdf", "extdata", "pdf", "UN_Millenium_Declaration.pdf")
-UN <- PDF$new(filename_pdf = doc)
+Decl <- PDF$new(filename_pdf = doc)
 ```
 
 Let us have a look at the document. The *show\_pdf*-method will open a browser window with the document.
 
 ``` r
-UN$show_pdf()
+Decl$show_pdf()
 ```
 
 For the pages of the document, we define boxes that define the area of the text that we want to retain.
 
 ``` r
-UN$add_box(page = 1, box = c(left = 110, top = 290, width = 400, height = 415))
-UN$add_box(page = 2, box = c(left = 110, top = 80, width = 400, height = 644))
-UN$add_box(page = 3, box = c(left = 110, top = 80, width = 400, height = 580))
-UN$add_box(page = 4, box = c(left = 110, top = 80, width = 400, height = 570))
-UN$add_box(page = 5, box = c(left = 110, top = 80, width = 400, height = 550))
-UN$add_box(page = 6, box = c(left = 110, top = 80, width = 400, height = 515))
-UN$add_box(page = 7, box = c(left = 110, top = 80, width = 400, height = 550))
-UN$add_box(page = 8, box = c(left = 110, top = 80, width = 400, height = 580))
-UN$add_box(page = 9, box = c(left = 110, top = 80, width = 400, height = 290))
+Decl$add_box(page = 1, box = c(left = 110, top = 290, width = 400, height = 415))
+Decl$add_box(page = 2, box = c(left = 110, top = 80, width = 400, height = 644))
+Decl$add_box(page = 3, box = c(left = 110, top = 80, width = 400, height = 580))
+Decl$add_box(page = 4, box = c(left = 110, top = 80, width = 400, height = 570))
+Decl$add_box(page = 5, box = c(left = 110, top = 80, width = 400, height = 550))
+Decl$add_box(page = 6, box = c(left = 110, top = 80, width = 400, height = 515))
+Decl$add_box(page = 7, box = c(left = 110, top = 80, width = 400, height = 550))
+Decl$add_box(page = 8, box = c(left = 110, top = 80, width = 400, height = 580))
+Decl$add_box(page = 9, box = c(left = 110, top = 80, width = 400, height = 290))
 ```
 
 We now drop anything outside the boxes (i.e page numbers, headers and column titles, footnotes). We get the remaining text, do some postprocessing and xmlify things. By generating a html document, we perform a quality check.
 
 ``` r
-UN$remove_unboxed_text_from_all_pages()
-UN$get_text_from_pages()
-UN$purge()
-UN$xmlify()
-UN$xml2html()
-UN$browse()
+Decl$remove_unboxed_text_from_all_pages()
+Decl$get_text_from_pages()
+Decl$purge()
+Decl$xmlify()
+Decl$xml2html()
+Decl$browse()
 ```
 
 Looks ok? Let is save the file to disk.
 
 ``` r
 output <- tempfile(fileext = ".xml")
-UN$write(filename = output)
+Decl$write(filename = output)
 ```
 
-Scenario 2: PDF with two columns.
-=================================
+### Scenario 2: PDF with two columns.
+
+The second scenario may appear somewhat more difficult: It is a protocol of a meeting of the UN General Assembly, a document with a two column layout.
 
 ``` r
 doc <- system.file(package = "trickypdf", "extdata", "pdf", "UN_GeneralAssembly_2016.pdf")
 UN <- PDF$new(filename_pdf = doc)
 UN$show_pdf()
+```
+
+As in the previous example, we define boxes. But this time, we define a second box for each page that does not replace the previously defined box.
+
+``` r
 UN$add_box(page = 1, box = c(top = 380, height = 250, left = 52, width = 255))
 UN$add_box(page = 1, box = c(top = 232, height = 400, left = 303, width = 255), replace = FALSE)
 UN$add_box(page = 2, box = c(top = 80, height = 595, left = 52, width = 255))
 UN$add_box(page = 2, box = c(top = 80, height = 595, left = 303, width = 255), replace = FALSE)
+```
+
+In the first scenario, we dropped anything outside the boxes and got everything that was still on the page. Now we explicitly grab the text in the boxes.
+
+``` r
 UN$get_text_from_boxes(paragraphs = TRUE)
 UN$xmlify()
+```
+
+Let us inspect the html of the resulting xml.
+
+``` r
 UN$xml2html()
 UN$browse()
+```
+
+Looks ok? Let's save it to disk.
+
+``` r
+output <- tempfile(fileext = ".xml")
+UN$write(filename = output)
 ```
 
 Contributing to package development
