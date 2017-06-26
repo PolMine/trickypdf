@@ -26,7 +26,7 @@ setOldClass("html")
 #' @param metadata named character vector, attribtutes of root node of output xml document
 #' @param filename character vector
 #' @param viewer the viewer to use to inspect pdf or html documents
-#' @importFrom xml2 xml_find_all write_xml xml_attrs xml_set_attrs xml_add_child xml_new_root xml_text
+#' @importFrom xml2 xml_find_all write_xml xml_attrs xml_set_attrs xml_add_child xml_new_root xml_text xml_replace
 #' @importFrom pbapply pblapply
 #' @importFrom methods setRefClass new
 #' @importFrom htmltools HTML html_print

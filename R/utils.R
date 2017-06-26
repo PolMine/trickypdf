@@ -6,7 +6,7 @@
 #' @export restore_paragraphs
 #' @name restore_paragraphs
 #' @rdname restore_paragraphs
-restore_paragraphs <- function(x, skipRegexCurrent = "^\\s*[A-Z(]", skipRegexPrevious = "[\\.?!)]\\s*$"){
+restore_paragraphs <- function(x, skipRegexCurrent = "^\\s*[•A-Z(]", skipRegexPrevious = "[\\.?!)]\\s*$"){
   
   "Reconstruct paragraphs from a character vector with line breaks and word-wraps.
   The heuristic is as follows: If a line ends with a hyphenation and the next line

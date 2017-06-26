@@ -6,16 +6,16 @@ trickypdf
 Purpose
 -------
 
-At a basic level, R users have efficient tools to extract text from pdf documents. The [pdftools](https://CRAN.R-project.org/package=pdftools), and the [Rpoppler](https://CRAN.R-project.org/package=Rpoppler) packages are powerful tools.
+At a basic level, R users have efficient tools to extract text from pdf documents. The [pdftools](https://CRAN.R-project.org/package=pdftools), and the [Rpoppler](https://CRAN.R-project.org/package=Rpoppler) packages are extremely useful and handy.
 
-The *trickypdf* package offers a class *PDF* to handle tricky problems that reoccurringly cause headaches when processing pdf documents with . , i.e.:
+There are couple of issues that may arise when processing pdf that remain tricky. The *trickypdf*-package offers a class *PDF* to handle problems that reoccurringly cause headaches when processing pdf documents. The class offers methods to...
 
 -   remove stuff outside the main text region (page headers, page numbers etc) as a preprocessing step.
 -   handle multi-column layouts;
 -   reconstruct lines of text, if the (OCRed) document has been scanned in tilted fashion;
 -   reconstruct paragraphs.
 
-The output will be a valid XML document, with optional document metadata. The XML output is meant to serve as the input to a Natural Language Processing (NLP) pipeline. A method to create browsable html from the xmlified pdf document is meant to assist quality checking in corpus preparation.
+The output will be a valid XML document, with optional document metadata. XML is generated to serve as the input to a Natural Language Processing (NLP) pipeline. A method to create browsable html from the xmlified pdf document is meant to assist quality checking in corpus preparation. The package thus makes handling tricky problems with processing pdf documents much easier!
 
 Installation
 ------------
@@ -61,6 +61,75 @@ devtools::install_github("PolMine/trickypdf")
 
 Usage
 -----
+
+``` r
+library(trickypdf)
+#> Loading required package: knitr
+```
+
+### Scenario 1: PDF with column titles, page numbers, footnotes
+
+As a sample document, the package includes the United Nations Millenium Declaration (pdf version). We create an instance of the PDF class by supplying the filename.
+
+``` r
+doc <- system.file(package = "trickypdf", "extdata", "pdf", "UN_Millenium_Declaration.pdf")
+UN <- PDF$new(filename_pdf = doc)
+```
+
+Let us have a look at the document. The *show\_pdf*-method will open a browser window with the document.
+
+``` r
+UN$show_pdf()
+```
+
+For the pages of the document, we define boxes that define the area of the text that we want to retain.
+
+``` r
+UN$add_box(page = 1, box = c(left = 110, top = 290, width = 400, height = 415))
+UN$add_box(page = 2, box = c(left = 110, top = 80, width = 400, height = 644))
+UN$add_box(page = 3, box = c(left = 110, top = 80, width = 400, height = 580))
+UN$add_box(page = 4, box = c(left = 110, top = 80, width = 400, height = 570))
+UN$add_box(page = 5, box = c(left = 110, top = 80, width = 400, height = 550))
+UN$add_box(page = 6, box = c(left = 110, top = 80, width = 400, height = 515))
+UN$add_box(page = 7, box = c(left = 110, top = 80, width = 400, height = 550))
+UN$add_box(page = 8, box = c(left = 110, top = 80, width = 400, height = 580))
+UN$add_box(page = 9, box = c(left = 110, top = 80, width = 400, height = 290))
+```
+
+We now drop anything outside the boxes (i.e page numbers, headers and column titles, footnotes). We get the remaining text, do some postprocessing and xmlify things. By generating a html document, we perform a quality check.
+
+``` r
+UN$remove_unboxed_text_from_all_pages()
+UN$get_text_from_pages()
+UN$purge()
+UN$xmlify()
+UN$xml2html()
+UN$browse()
+```
+
+Looks ok? Let is save the file to disk.
+
+``` r
+output <- tempfile(fileext = ".xml")
+UN$write(filename = output)
+```
+
+Scenario 2: PDF with two columns.
+=================================
+
+``` r
+doc <- system.file(package = "trickypdf", "extdata", "pdf", "UN_GeneralAssembly_2016.pdf")
+UN <- PDF$new(filename_pdf = doc)
+UN$show_pdf()
+UN$add_box(page = 1, box = c(top = 380, height = 250, left = 52, width = 255))
+UN$add_box(page = 1, box = c(top = 232, height = 400, left = 303, width = 255), replace = FALSE)
+UN$add_box(page = 2, box = c(top = 80, height = 595, left = 52, width = 255))
+UN$add_box(page = 2, box = c(top = 80, height = 595, left = 303, width = 255), replace = FALSE)
+UN$get_text_from_boxes(paragraphs = TRUE)
+UN$xmlify()
+UN$xml2html()
+UN$browse()
+```
 
 Contributing to package development
 -----------------------------------

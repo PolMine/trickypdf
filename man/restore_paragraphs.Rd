@@ -4,7 +4,7 @@
 \alias{restore_paragraphs}
 \title{Restore paragraphs}
 \usage{
-restore_paragraphs(x, skipRegexCurrent = "^\\\\s*[A-Z(]",
+restore_paragraphs(x, skipRegexCurrent = "^\\\\s*[•A-Z(]",
   skipRegexPrevious = "[\\\\.?!)]\\\\s*$")
 }
 \arguments{
