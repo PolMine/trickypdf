@@ -6,10 +6,12 @@ addons:
   packages:
   - libpoppler-cpp-dev
 
+before_install:
+  - Rscript -e 'install.packages(pkgs = c("Rpoppler"))'
+
 warnings_are_errors: true
 
 notifications:
   email:
   on_success: change
   on_failure: change
-
