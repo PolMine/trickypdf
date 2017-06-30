@@ -8,6 +8,7 @@ addons:
   - poppler-utils
 
 before_install:
+  - sudo apt-get install -y libpoppler-glib-dev poppler-utils
   - Rscript -e 'install.packages(pkgs = c("Rpoppler"))'
 
 warnings_are_errors: true
