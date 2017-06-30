@@ -4,7 +4,8 @@ cache: packages
 addons:
   apt:
   packages:
-  - libpoppler-cpp-dev
+  - libpoppler-glib-dev
+  - poppler-utils
 
 before_install:
   - Rscript -e 'install.packages(pkgs = c("Rpoppler"))'
@@ -15,3 +16,6 @@ notifications:
   email:
   on_success: change
   on_failure: change
+
+after_success:
+  - Rscript -e 'library(covr);codecov()'
