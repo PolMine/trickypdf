@@ -15,7 +15,7 @@
 #'   "ken lines."
 #'   )
 #' restore_paragraphs(vec)
-restore_paragraphs <- function(x, skipRegexCurrent = "^\\s*[•A-Z(]", skipRegexPrevious = "[\\.?!)]\\s*$"){
+restore_paragraphs <- function(x, skipRegexCurrent = "^\\s*[\u2022A-Z(]", skipRegexPrevious = "[\\.?!)]\\s*$"){
   
   "Reconstruct paragraphs from a character vector with line breaks and word-wraps.
   The heuristic is as follows: If a line ends with a hyphenation and the next line

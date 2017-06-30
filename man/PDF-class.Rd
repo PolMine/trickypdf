@@ -96,12 +96,12 @@ be in points and are recalibrated into pdf units.}
 
 \item{\code{purge()}}{Remove noise, surplus whitespace signs from the text.}
 
+\item{\code{reconstruct_paragraphs()}}{Reconstruct paragraphs based on the following heuristic: If a line ends with a hyphen
+and is not stump, lines are concatenated.}
+
 \item{\code{remove_unboxed_text_from_all_pages()}}{Remove anything that is printed on pages beyond the defined boxes.}
 
 \item{\code{reorder()}}{Reorder text nodes on a page. Not yet functional!}
-
-\item{\code{restore_paragraphs()}}{Reconstruct paragraphs based on the following heuristic: If a line ends with a hyphen
-and is not stump, lines are concatenated.}
 
 \item{\code{show_pdf()}}{Show the pdf document.}
 
@@ -116,7 +116,6 @@ quality checks.}
 }}
 
 \examples{
-\dontrun{
 # Basic scenario: A straight-forward pdf without columns;
 # it's only page numbers and text on the margins that disturbs
 
@@ -129,7 +128,7 @@ P$get_text_from_pages()
 P$purge()
 P$xmlify()
 P$xml2html()
-P$browse()
+# P$browse()
 output <- tempfile(fileext = ".xml")
 P$write(filename = output)
 
@@ -146,7 +145,7 @@ UN$add_box(page = 2, box = c(top = 80, height = 595, left = 303, width = 255), r
 UN$get_text_from_boxes(paragraphs = TRUE)
 UN$xmlify()
 UN$xml2html()
-UN$browse()
+# UN$browse()
 
 # Advanced scenario II: Get text from pdf with columns, long version
 
@@ -161,6 +160,5 @@ P$get_text_from_pages()
 P$purge()
 P$xmlify()
 P$xml2html()
-P$browse()
-}
+# P$browse()
 }

@@ -38,7 +38,6 @@ setOldClass("html")
 #' @name PDF
 #' @export PDF
 #' @examples
-#' \dontrun{
 #' # Basic scenario: A straight-forward pdf without columns;
 #' # it's only page numbers and text on the margins that disturbs
 #' 
@@ -51,7 +50,7 @@ setOldClass("html")
 #' P$purge()
 #' P$xmlify()
 #' P$xml2html()
-#' P$browse()
+#' # P$browse()
 #' output <- tempfile(fileext = ".xml")
 #' P$write(filename = output)
 #' 
@@ -68,7 +67,7 @@ setOldClass("html")
 #' UN$get_text_from_boxes(paragraphs = TRUE)
 #' UN$xmlify()
 #' UN$xml2html()
-#' UN$browse()
+#' # UN$browse()
 #' 
 #' # Advanced scenario II: Get text from pdf with columns, long version
 #' 
@@ -83,8 +82,7 @@ setOldClass("html")
 #' P$purge()
 #' P$xmlify()
 #' P$xml2html()
-#' P$browse()
-#' }
+#' # P$browse()
 PDF <- setRefClass(
   
   "PDF",
@@ -436,7 +434,7 @@ PDF <- setRefClass(
       
     },
     
-    restore_paragraphs = function(){
+    reconstruct_paragraphs = function(){
       
       "Reconstruct paragraphs based on the following heuristic: If a line ends with a hyphen
       and is not stump, lines are concatenated."

@@ -15,9 +15,9 @@ Imports:
     htmltools,
     markdown,
     stringi,
-    plyr,
-    testthat
+    plyr
 Suggests:
+    testthat
 VignetteBuilder: knitr
 LazyData: yes
 Description: The class 'PDF' in the package includes methods to parse, prune and
