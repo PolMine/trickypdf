@@ -1,0 +1,34 @@
+language: r
+cache: packages
+
+matrix:
+  include:
+  - os: linux
+r: devel
+- os: linux
+dist: precise
+- os: linux
+dist: trusty
+sudo: required
+env: R_CODECOV=true
+- os: osx
+osx_image: xcode8.2
+brew_packages: poppler
+latex: false
+- os: osx
+osx_image: xcode7.3
+latex: false
+disable_homebrew: true
+
+addons:
+  apt:
+  packages:
+  - libpoppler-cpp-dev
+
+warnings_are_errors: true
+
+notifications:
+  email:
+  on_success: change
+  on_failure: change
+
