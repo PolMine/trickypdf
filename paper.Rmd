@@ -1,0 +1,26 @@
+---
+title: "Introducing the 'trickypdf' package"
+author: "Andreas Blaette"
+date: "28 Juni 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Aim: Easing the pain pdf can cause
+
+Many documents are available in a pdf format. There are many reasons why data scientists would want
+to convert pdf into XML as a semi-structured data format. Liberating text from the pdf prison
+is the first step to further process text in a Natural Language Processing (NLP) pipeline, or to analyse it directly. To support this rather technical step, R users can use a couple of packages to extract text from pdf documents, in particular [Rpoppler](), or [pdftools](). However, if you deal with somewhat or more heavily layouted document, the real work starts after text extraction. To get rid of unwanted features resulting from document layout, manual cleaning, batteries of regular expressions and several further programming quirks may be necessary to get the postprocessing task done.
+
+The idea of the trickypdf package is to proactively deal with the layout of a document and to extract
+the text as cleanly as possible, to obfiscate nerve-wrecking postprocessing.
+
+
+
+
+
+## R Markdown
+

@@ -61,9 +61,6 @@ To get the margins of the text: Use Rechteckige Auswahl, and Werkzeuge/Allgemein
 
 \item{\code{browse(viewer = getOption("viewer", utils::browseURL))}}{Show html document in browser.}
 
-\item{\code{concatenate()}}{Reconstruct paragraphs based on the following heuristic: If a line ends with a hyphen
-and is not stump, lines are concatenated.}
-
 \item{\code{decolumnize()}}{Remove columnization, if pages are typeset with two columns. Muli-column layouts
 with three or more columns are not supported so far. The procedure adjusts the
 coordinates of text right of the the horizontal page center, i.e. the page height
@@ -79,6 +76,8 @@ match for the regex.}
 the xmlified pdf document. To get sizes in points (pts), PDF_info (package Rpoppler) is
 used. The result is a data.frame in the field pagesizes. The method is called when parsing
 the pdf document.}
+
+\item{\code{get_text(node, paragraphs = TRUE)}}{Get the text from document in field 'xml'.}
 
 \item{\code{get_text_from_boxes(paragraphs)}}{Iterate through pages, and extract text as defined by boxes from pages. The result
 will be assigned to field 'pages'.}
@@ -101,15 +100,19 @@ be in points and are recalibrated into pdf units.}
 
 \item{\code{reorder()}}{Reorder text nodes on a page. Not yet functional!}
 
+\item{\code{restore_paragraphs()}}{Reconstruct paragraphs based on the following heuristic: If a line ends with a hyphen
+and is not stump, lines are concatenated.}
+
 \item{\code{show_pdf()}}{Show the pdf document.}
 
 \item{\code{write(filename)}}{Save xmlified document (available in the field 'xmlification') to a file.}
 
-\item{\code{xml2html()}}{Turn xmlification of pdf document into html document.}
+\item{\code{xml2html()}}{Turn xmlification of pdf document into html document to support
+quality checks.}
 
 \item{\code{xml2md()}}{Turn xmlified document into markdown (will be stored in field 'markdown').}
 
-\item{\code{xmlify(root = "document", metadata = NULL)}}{Turn text in the pages field into a XML document.}
+\item{\code{xmlify(root = "document", metadata = NULL)}}{Turn content of field 'pages' into a XML document, optionally adding metadata.}
 }}
 
 \examples{

@@ -147,7 +147,7 @@ UN$xml2html()
 UN$browse()
 ```
 
-Looks ok? Let's save it to disk.
+Does it look ok? Let's save it to disk.
 
 ``` r
 output <- tempfile(fileext = ".xml")

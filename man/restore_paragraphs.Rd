@@ -15,5 +15,13 @@ restore_paragraphs(x, skipRegexCurrent = "^\\\\s*[•A-Z(]",
 \item{skipRegexPrevious}{another regex}
 }
 \description{
-Restore paragraphs
+Restore paragraphs in a character vector.
+}
+\examples{
+vec <- c(
+  "This is a sample text. We freq-",
+  "quently encounter issues with bro-",
+  "ken lines."
+  )
+restore_paragraphs(vec)
 }

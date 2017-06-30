@@ -12,3 +12,10 @@ broom(x)
 \description{
 Clean character vector.
 }
+\examples{
+vec <- c(
+  "This is    somewhat murky",
+  "   text with  too much whitespace.  "
+)
+broom(vec)
+}

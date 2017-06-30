@@ -1,9 +1,9 @@
-#' pdf2xml
+#' trickypdf
 #' 
 #' Turn pdf document into XML for further processing 
 #' in a corpus preparation pipeline. The particular
-#' focus of the package is to handle tilted lines, and 
-#' to handle pages with two columens.
+#' focus of the package is to cleanly extract text from 
+#' layouted pdf documents (multi-column layout etc.).
 #' 
 #' @author Andreas Blaette (andreas.blaette@@uni-due.de)
 #' @references http://polmine.sowi.uni-due.de

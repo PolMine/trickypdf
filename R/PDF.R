@@ -334,6 +334,9 @@ PDF <- setRefClass(
     },
     
     get_text = function(node, paragraphs = TRUE){
+      
+      "Get the text from document in field 'xml'."
+      
       text_nodes <- xml2::xml_find_all(node, xpath = "./text")
       txt <- character()
       txtPosition <- integer()
@@ -433,7 +436,7 @@ PDF <- setRefClass(
       
     },
     
-    concatenate = function(){
+    restore_paragraphs = function(){
       
       "Reconstruct paragraphs based on the following heuristic: If a line ends with a hyphen
       and is not stump, lines are concatenated."
@@ -463,7 +466,7 @@ PDF <- setRefClass(
     
     xmlify = function(root = "document", metadata = NULL){
       
-      "Turn text in the pages field into a XML document."
+      "Turn content of field 'pages' into a XML document, optionally adding metadata."
       
       .self$xmlification <- xml_new_root(.value = root)
       if (!is.null(metadata)){
@@ -559,7 +562,8 @@ PDF <- setRefClass(
     
     xml2html = function(){
       
-      "Turn xmlification of pdf document into html document."
+      "Turn xmlification of pdf document into html document to support
+      quality checks."
       
       .self$xml2md()
       .self$md2html()

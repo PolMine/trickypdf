@@ -15,7 +15,8 @@ Imports:
     htmltools,
     markdown,
     stringi,
-    plyr
+    plyr,
+    testthat
 Suggests:
 VignetteBuilder: knitr
 LazyData: yes

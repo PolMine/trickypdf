@@ -1,11 +1,20 @@
 #' Restore paragraphs
 #' 
+#' Restore paragraphs in a character vector.
+#' 
 #' @param x a character vector
 #' @param skipRegexCurrent a regex
 #' @param skipRegexPrevious another regex
 #' @export restore_paragraphs
 #' @name restore_paragraphs
 #' @rdname restore_paragraphs
+#' @examples 
+#' vec <- c(
+#'   "This is a sample text. We freq-",
+#'   "quently encounter issues with bro-",
+#'   "ken lines."
+#'   )
+#' restore_paragraphs(vec)
 restore_paragraphs <- function(x, skipRegexCurrent = "^\\s*[•A-Z(]", skipRegexPrevious = "[\\.?!)]\\s*$"){
   
   "Reconstruct paragraphs from a character vector with line breaks and word-wraps.
@@ -37,6 +46,12 @@ restore_paragraphs <- function(x, skipRegexCurrent = "^\\s*[•A-Z(]", skipRegex
 #' @export broom
 #' @rdname broom
 #' @name broom
+#' @examples
+#' vec <- c(
+#'   "This is    somewhat murky",
+#'   "   text with  too much whitespace.  "
+#' )
+#' broom(vec)
 broom <- function(x){
   x <- gsub("\uf038", "", x)
   x <- gsub("\\s+", " ", x)
