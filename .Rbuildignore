@@ -1,4 +1,5 @@
 ^CONDUCT\.md$
 ^README\.Rmd$
 ^README-.*\.png$
+^paper\.Rmd$
 .travis.yml$
