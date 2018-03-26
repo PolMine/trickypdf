@@ -357,7 +357,7 @@ PDF <- setRefClass(
       }
       txt <- txt[order(txtPosition)] # if order of text nodes is screwed up
       if (paragraphs) txt <- restore_paragraphs(txt)
-      
+      txt
     },
     
     get_text_from_pages = function(paragraphs = TRUE){
