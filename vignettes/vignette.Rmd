@@ -25,7 +25,110 @@ the text as cleanly as possible, to obfiscate nerve-wrecking postprocessing.
 
 
 
+## Some sample scenarios
+
+```{r load_trickypdf}
+library(trickypdf)
+```
 
 
-## R Markdown
+### Scenario: Get text from pdf with columns, omitting table of contents
+
+A typical scenario is that you have a pdf document with a two-column layout, with a front matter and/or a table of contents at the beginning of the document that you do not want to be part of the document that you process. As an example for this typical scenario, the package includes a protocol of the German Bundestag, the protocol of the 238th session of the 18th Bundestag.
+
+```{r inspect_protocol}
+plenaryprotocol <- system.file(package = "trickypdf", "extdata", "pdf", "18238.pdf")
+if (interactive()) browseURL(plenaryprotocol)
+```
+
+For the pages with the debates and speeches, we will define boxes from which the text shall be extracted. Yet the first step is to identify the the page with the beginning of the actual debate. Looking at the pdf, there is one defining feature of this feature of the page: "Beginn: 9.00 Uhr". And: "(Schluss: 15.10 Uhr)".
+
+```{r detect_beginning_end}
+P <- PDF$new(filename_pdf = plenaryprotocol)
+
+P$get_text_from_pages(paragraphs = FALSE)
+
+regexStartDebate <- "^\\s*Beginn:\\s+\\d{1,2}\\s*(\\.|:)\\s*\\d{1,2}\\s+Uhr\\s*$"
+regexEndDebate <- "^\\s*\\(Schluss:\\s+\\d{1,2}\\s*(\\.|:)\\s*\\d{1,2}\\s+Uhr\\)\\s*$"
+
+pageStartDebate <- P$find(regex = regexStartDebate)
+pageEndDebate <- P$find(regex = regexEndDebate)
+```
+
+Having identified where the body of the debate starts, and where it ends, we re-instantiate the PDF class, but with the identified start and end pages.
+
+```{r instantiate_selectively}
+P <- PDF$new(filename_pdf = plenaryprotocol, first = pageStartDebate, last = pageEndDebate)
+```
+
+We can use Apple's Preview tool or `tabulizer::???` to identify the coordinates of the boxes with left and right columns. When we set page to NULL (the default), we make the definition for all pages.
+ 
+```{r add_box_all_pages}
+P$add_box(box = c(left = 60, width = 235, top = 70, height = 703), page = NULL, replace = TRUE)
+P$add_box(box = c(left = 301, width = 235, top = 70, height = 703), page = NULL, replace = FALSE)
+```
+
+To inspect the result, see `P$boxes`. You will see that the coordinates in the resulting data.frame are not the input values: Recalibrating coordinates to the pixel format is automatically performed.
+
+The layout of the first page is different, there is a header with relevant metadata, but we do not want it to be part of the text of the debate we extract. So we use the `$add_box()`-method again, but we explicitly state the page number. [it is one, not 5 - explain!]
+
+```{r add_box_page_1}
+P$add_box(box = c(left = 58, width = 235, top = 277, height = 493), page = 1, replace = TRUE)
+P$add_box(box = c(left = 301, width = 235, top = 277, height = 493), page = 1, replace = FALSE)
+```
+
+The PDF class is now appropriately configured. The first step now is to remove everything from the pages -- the xml of the pdf document -- that is not within one of the boxes that we have defined.
+
+```{r remove_unboxed_text}
+P$remove_unboxed_text_from_all_pages()
+```
+
+For two-column text, the `$decolumnize()`-method is an appropriate tool: It rearranges the text on the pages by identifying what is to the right side of the middle of the page and moves it to the bottom of the page. 
+
+```{r decolumnize}
+P$deviation <- 10L
+P$decolumnize()
+````
+
+Let us get the result from the pages.
+
+```{r get_text}
+P$get_text_from_pages()
+```
+
+A small post-processing step: We remove unwanted whitespace.
+
+```{r purge}
+P$purge() # cleaning
+```
+
+The result is in the slot `$pages` of the class. We can re-create a simple XML using the `$xmlify` method (the result will be in the field `$xmlification`). This XMLification can be inspected as HTML.
+
+```{r inspect_xmlification}
+P$xmlify()
+P$xml2html()
+if (interactive()) P$browse()
+```
+
+
+#### Approach 2:
+
+
+### Annex
+
+```{r screenshot_preview1, out.width = "500px", dpi = 120, echo = FALSE}
+knitr::include_graphics("assets/using_preview_1.png")
+```
+
+
+```{r screenshot_preview2, out.width = "500px", dpi = 120, echo = FALSE}
+knitr::include_graphics("assets/using_preview_2.png")
+```
+
+
+```{r screenshot_preview3, out.width = "500px", dpi = 120, echo = FALSE}
+knitr::include_graphics("assets/using_preview_3.png")
+```
+
+
 

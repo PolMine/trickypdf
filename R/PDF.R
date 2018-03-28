@@ -67,7 +67,7 @@ setOldClass("html")
 #' UN$get_text_from_boxes(paragraphs = TRUE)
 #' UN$xmlify()
 #' UN$xml2html()
-#' # UN$browse()
+#' if (interactive()) UN$browse()
 #' 
 #' # Advanced scenario II: Get text from pdf with columns, long version
 #' 
@@ -82,7 +82,7 @@ setOldClass("html")
 #' P$purge()
 #' P$xmlify()
 #' P$xml2html()
-#' # P$browse()
+#' if (interactive()) P$browse()
 PDF <- setRefClass(
   
   "PDF",
@@ -202,23 +202,18 @@ PDF <- setRefClass(
           function(i) .self$make_box(box = box, page = i)
         )
         newBoxDataFrame <- as.data.frame(do.call(rbind, boxList))
-        if (replace == TRUE){
+        if (replace){
           .self$boxes <- newBoxDataFrame
         } else {
           .self$boxes <- rbind(.self$boxes, newBoxDataFrame)
-          .self$boxes <- .self$boxes[order(.self$boxes[["page"]])]
+          .self$boxes <- .self$boxes[order(.self$boxes[["page"]]),]
         }
       } else {
         for (i in page){
           newBox <- .self$make_box(box = box, page = page)
-          if (replace == TRUE){
-            .self$boxes <- .self$boxes[-which(.self$boxes[["page"]] == i),]
-            .self$boxes <- rbind(.self$boxes, newBox)
-            .self$boxes <- .self$boxes[order(.self$boxes[["page"]]),]
-          } else {
-            .self$boxes <- rbind(.self$boxes, newBox)
-            .self$boxes <- .self$boxes[order(.self$boxes[["page"]]),]
-          }
+          if (replace).self$boxes <- .self$boxes[-which(.self$boxes[["page"]] == i),]
+          .self$boxes <- rbind(.self$boxes, newBox)
+          .self$boxes <- .self$boxes[order(.self$boxes[["page"]]),]
         }
       }
       invisible(.self$boxes)
@@ -339,6 +334,7 @@ PDF <- setRefClass(
       txt <- character()
       txtPosition <- integer()
       counter <- 1L
+      if (length(text_nodes) == 0) return(txt)
       for (i in 1:length(text_nodes)){
         if (i == 1){
           txt[1] <- xml2::xml_text(text_nodes[[i]])
