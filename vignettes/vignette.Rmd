@@ -32,7 +32,7 @@ library(trickypdf)
 ```
 
 
-### Scenario: Get text from pdf with columns, omitting table of contents
+### Scenario: A two column pdf, a table of contents to skip
 
 A typical scenario is that you have a pdf document with a two-column layout, with a front matter and/or a table of contents at the beginning of the document that you do not want to be part of the document that you process. As an example for this typical scenario, the package includes a protocol of the German Bundestag, the protocol of the 238th session of the 18th Bundestag.
 
