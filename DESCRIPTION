@@ -8,7 +8,7 @@ Maintainer: Andreas Blaette <andreas.blaette@uni-due.de>
 Depends:
     knitr
 Imports:
-    methods,
+    R6,
     xml2,
     pbapply,
     Rpoppler,

@@ -5,9 +5,10 @@ date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Introduction to trickypdf}
-  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
-
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options: 
+  chunk_output_type: console
 ---
 
 
@@ -57,11 +58,17 @@ pageEndDebate <- P$find(regex = regexEndDebate)
 
 Having identified where the body of the debate starts, and where it ends, we re-instantiate the PDF class, but with the identified start and end pages.
 
-```{r instantiate_selectively}
-P <- PDF$new(filename_pdf = plenaryprotocol, first = pageStartDebate, last = pageEndDebate)
+
+```{r}
+P$drop_page(page = (pageEndDebate + 1):P$no_pages)
+P$drop_page(page = 1:(pageStartDebate - 1))
 ```
 
-We can use Apple's Preview tool or `tabulizer::???` to identify the coordinates of the boxes with left and right columns. When we set page to NULL (the default), we make the definition for all pages.
+
+
+#### Procedure 1: Get text from defined boxes
+
+We can use Apple's Preview tool or `tabulizer::???` to identify the coordinates of the boxes with left and right columns (see Annex). When we set page to NULL (the default), we make the definition for all pages.
  
 ```{r add_box_all_pages}
 P$add_box(box = c(left = 60, width = 235, top = 70, height = 703), page = NULL, replace = TRUE)
@@ -77,13 +84,74 @@ P$add_box(box = c(left = 58, width = 235, top = 277, height = 493), page = 1, re
 P$add_box(box = c(left = 301, width = 235, top = 277, height = 493), page = 1, replace = FALSE)
 ```
 
-The PDF class is now appropriately configured. The first step now is to remove everything from the pages -- the xml of the pdf document -- that is not within one of the boxes that we have defined.
+The PDF class is now appropriately configured. We instruct the PDF class to iterate through all boxes that have been defined and to get the text within these boxes.
+
+```{r}
+P$get_text_from_boxes(paragraphs = TRUE)
+```
+
+The result is stored as a list in the field \code{pages}. In this case, each element in the list is itself a list with the content of a box. You can see this, for instance, by typing `P$pages[[1]]`.
+
+The justification of the text in the columns will lead to several surplus whitespaces. We remove it using the method `$purge()`.
+
+```{r}
+P$purge()
+```
+
+To inspect the result, we re-xmlify the text, which will create a very simply xml in the field \code{xml}. We can turn this into a simple html document.
+
+```{r}
+P$xmlify()
+P$xml2html()
+if (interactive()) P$browse()
+```
+
+Assuming that we want a plain text document as output, we turn the list in the field `$pages` into a plain character vector that can be saved to disk.
+
+```{r}
+txt <- unname(unlist(P$pages))
+destfile <- tempfile()
+writeLines(text = txt, con = destfile)
+```
+
+
+#### Approach 2
+
+The second approach for handling a two column layout with unwanted content on the margins will involve two steps. First, we define boxes with wanted content. Second, we remove anything that is external to these boxes. Third, we do away with the two column layout. 
+
+However, somewhat different from the first approach, the boxes just define an area with wanted content. They do not need to capture the layout in a lot of detail. So you just define one box per page. 
+
+```{r screenshot_one_box_1, out.width = "500px", dpi = 120, echo = FALSE}
+knitr::include_graphics("assets/one_box_per_page_1.png")
+```
+
+To learn how to get the coordinates of the box, see the Annex. If we leave the parameter page of the `$add_box`-method undefined, the definition of a box will be applied to all pages.
+
+```{r}
+P$add_box(box = c(left = 60, width = 475, top = 72, height = 702), replace = TRUE)
+```
+
+However, the layout of the first page is somewhat different. Some metadata are given first.
+
+```{r screenshot_one_box_2, out.width = "500px", dpi = 120, echo = FALSE}
+knitr::include_graphics("assets/one_box_per_page_2.png")
+```
+
+So we define a different box for the first page we process.
+
+```{r}
+P$add_box(box = c(left = 58, width = 476, top = 273, height = 496), page = 1, replace = TRUE)
+```
+
+The next step now is to remove everything from the pages -- the xml of the pdf document -- that is not within one of the boxes that we have defined.
 
 ```{r remove_unboxed_text}
 P$remove_unboxed_text_from_all_pages()
 ```
 
-For two-column text, the `$decolumnize()`-method is an appropriate tool: It rearranges the text on the pages by identifying what is to the right side of the middle of the page and moves it to the bottom of the page. 
+Marginalia, column titles and page numbers have now been removed. So it is not necessary to remove these things in a postprocessing step.
+
+We will dissolve the two column layout using the `$decolumnize()`-method: It rearranges the text on the pages by identifying what is to the right side of the middle of the page and moves it to the bottom of the page. To cope with crooked scans, the (integer) value in the field `$deviation` can be set, to allow for (small) deviations from the center line.
 
 ```{r decolumnize}
 P$deviation <- 10L
@@ -93,7 +161,7 @@ P$decolumnize()
 Let us get the result from the pages.
 
 ```{r get_text}
-P$get_text_from_pages()
+P$get_text_from_pages(paragraphs = FALSE)
 ```
 
 A small post-processing step: We remove unwanted whitespace.
@@ -110,8 +178,16 @@ P$xml2html()
 if (interactive()) P$browse()
 ```
 
+To save plain text to disc, the same logic of unlisting the content in the field `$page` as before applies.
 
-#### Approach 2:
+```{r}
+writeLines(
+  text = unname(unlist(P$pages)),
+  con = destfile2 <- tempfile()
+  )
+```
+
+
 
 
 ### Annex
