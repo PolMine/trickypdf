@@ -284,7 +284,10 @@ PDF <- R6::R6Class(
       } else {
         for (i in page){
           newBox <- self$make_box(box = box, page = page)
-          if (replace)self$boxes <- self$boxes[-which(self$boxes[["page_node"]] == i),]
+          if (replace){
+            hit <- which(self$boxes[["page_node"]] == i)
+            if (length(hit) > 0) self$boxes <- self$boxes[-hit,]
+          }
           self$boxes <- rbind(self$boxes, newBox)
           self$boxes <- self$boxes[order(self$boxes[["page_node"]]),]
         }
