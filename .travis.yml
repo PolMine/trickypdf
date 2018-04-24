@@ -6,6 +6,7 @@ addons:
   packages:
   - libpoppler-glib-dev
   - poppler-utils
+  - libxml2-utils
 
 before_install:
   - sudo apt-get install -y libpoppler-glib-dev poppler-utils
