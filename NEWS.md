@@ -1,3 +1,8 @@
+# v0.1.2
+* the utility function pdf_to_xml() is now the worker to convert pdf documents to xml;
+invalid xml (happens occasionally) is repaired using xmllint --recover, if availably
+
+
 # v0.1.1
 * bug in method $get_pages() removed that occurrs when there are not text nodes on page
 * bug removed when adding boxes to existing box data.frame

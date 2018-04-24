@@ -47,8 +47,6 @@ To get the margins of the text: Use Rechteckige Auswahl, and Werkzeuge/Allgemein
   process a pdf document.}
   \item{\code{$validate()}}{Check all fields for correct content.}
   \item{\code{$show_pdf()}}{Show the pdf document.}
-  \item{\code{$pdf2xml()}}{Turn pdf document into a raw XML document that
-  will be kept in the field 'xml'.}
   \item{\code{$make_box(box = NULL, page)}}{Generate a box for the data.frame
   in the field \code{$boxes}. Coordinates a assumed to be in points and are
   recalibrated into pdf units.}

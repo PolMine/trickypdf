@@ -26,8 +26,6 @@ setOldClass("html")
 #'   process a pdf document.}
 #'   \item{\code{$validate()}}{Check all fields for correct content.}
 #'   \item{\code{$show_pdf()}}{Show the pdf document.}
-#'   \item{\code{$pdf2xml()}}{Turn pdf document into a raw XML document that
-#'   will be kept in the field 'xml'.}
 #'   \item{\code{$make_box(box = NULL, page)}}{Generate a box for the data.frame
 #'   in the field \code{$boxes}. Coordinates a assumed to be in points and are
 #'   recalibrated into pdf units.}
@@ -95,6 +93,7 @@ setOldClass("html")
 #' @importFrom stringi stri_extract_all
 #' @importFrom markdown markdownToHTML
 #' @importFrom plyr dlply .
+#' @importFrom methods setOldClass
 #' @rdname PDF-class
 #' @name PDF
 #' @export PDF
@@ -186,7 +185,8 @@ PDF <- R6::R6Class(
         page_node = integer(), left = numeric(), top = numeric(), width = numeric(),
         height = numeric(), bottom = numeric(), right = numeric()
       )
-      self$pdf2xml()
+      self$xml <- pdf_to_xml(filename = self$filename_pdf, first = self$first, last = self$last)
+      self$no_pages <- self$get_number_of_pages()
       self$get_pagesizes()
       # self$add_box(box = NULL, page = NULL)
       invisible(self)
@@ -214,30 +214,9 @@ PDF <- R6::R6Class(
     show_pdf = function(){
       browseURL(self$filename_pdf)
     },
-    
-    pdf2xml = function(){
-      
-      cmd <- c(
-        "pdftohtml",
-        "-xml", # output for XML post-processing
-        "-hidden", # output hidden text
-        if (!is.na(self$first)) c("-f", self$first) else NA,
-        if (!is.na(self$last)) c("-l", self$last) else NA,
-        "-q", # don't print any messages or errors
-        "-stdout", # use standard output
-        "-i", # ignore images
-        self$filename_pdf
-      )
-      if (any(is.na(cmd))) cmd <- cmd[-which(is.na(cmd))]
-      cmd <- paste(cmd, collapse = " ")
-      xmlChar <- system(cmd, intern = TRUE)
-      self$xml <- xml2::read_xml(x = paste(xmlChar, collapse = "\n"))
-      self$no_pages <- self$get_number_of_pages()
-      invisible(self)
-    },
-    
+
     get_number_of_pages = function(){
-      length(private$get_page_nodes())
+      length(self$get_page_nodes())
     },
     
     make_box = function(box = NULL, page){
@@ -302,7 +281,7 @@ PDF <- R6::R6Class(
       page <- as.integer(page)
       if (any(is.na(page))) stop("drop_page-method: values of page cannot be coerced to integer",
                                  "without creating NAs")
-      page_nodes <- private$get_page_nodes()
+      page_nodes <- self$get_page_nodes()
       if (any(page > length(page_nodes))) stop("at least one page number beyond end of document") 
       
       page <- page[order(page, decreasing = TRUE)] 
@@ -347,7 +326,7 @@ PDF <- R6::R6Class(
     
     remove_unboxed_text_from_all_pages = function(){
       
-      page_nodes <- private$get_page_nodes()
+      page_nodes <- self$get_page_nodes()
       pblapply(
         1:length(page_nodes), # iterate through pages
         function(i){
@@ -362,7 +341,7 @@ PDF <- R6::R6Class(
     
     decolumnize = function(){
 
-      pageNodes <- private$get_page_nodes()
+      pageNodes <- self$get_page_nodes()
       lapply(
         pageNodes, # iterate through pages
         function(page){
@@ -392,7 +371,7 @@ PDF <- R6::R6Class(
     get_pagesizes = function(){
       
       # get width and height (pdf units)
-      xmlAttrsPages <- lapply(private$get_page_nodes(), xml_attrs)
+      xmlAttrsPages <- lapply(self$get_page_nodes(), xml_attrs)
       self$pagesizes <- as.data.frame(do.call(rbind, xmlAttrsPages), stringsAsFactors = FALSE)
       colnames(self$pagesizes)[which(colnames(self$pagesizes) == "number")] <- "page_node"
       for (what in c("page_node", "top", "left", "height", "width")){
@@ -437,14 +416,14 @@ PDF <- R6::R6Class(
     get_text_from_pages = function(paragraphs = TRUE){
 
       self$pages <- lapply(
-        private$get_page_nodes(),
+        self$get_page_nodes(),
         function(page) self$get_text(page, paragraphs = paragraphs)
       )
     },
     
     get_text_from_boxes = function(paragraphs){
       
-      page_nodes <- private$get_page_nodes()
+      page_nodes <- self$get_page_nodes()
       self$pages <- dlply(
         .data = self$boxes, .variables = .(page_node), # create sub-data.frames for bages
         .fun = function(df){
@@ -468,7 +447,7 @@ PDF <- R6::R6Class(
     
     find = function(regex){
 
-      page_nodes <- private$get_page_nodes()
+      page_nodes <- self$get_page_nodes()
       matching <- lapply(
         1:length(page_nodes), # iterate through pages
         function(i){
@@ -616,12 +595,8 @@ PDF <- R6::R6Class(
     
     write = function(filename){
       write_xml(self$xmlification, file = filename)
-    }
-  ),
-  
-  private = list(
+    },
     
     get_page_nodes = function() xml2::xml_find_all(self$xml, xpath = "/pdf2xml/page")
-      
   )
 )
