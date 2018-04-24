@@ -28,6 +28,8 @@ pdf_to_xml = function(filename, first, last){
   if (last > no_pages) last <- no_pages
   stopifnot(first <= last)
   
+  if (grepl("\\s+", filename)) filename <- sprintf('"%s"', filename)
+  
   cmd <- c(
     "pdftohtml",
     "-xml", # output for XML post-processing
