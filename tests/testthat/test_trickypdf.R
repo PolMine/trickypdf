@@ -67,3 +67,17 @@ test_that("two_column_layout_boxes", {
   )
 })
 
+
+test_that("one_page_document",{
+  expect_equal(
+    {
+      doc <- system.file(package = "trickypdf", "extdata", "pdf", "unga_one_page.pdf")
+      UN <- PDF$new(filename_pdf = doc)
+      UN$add_box(page = 1, box = c(top = 240, height = 400, left = 55, width = 250))
+      UN$add_box(page = 1, box = c(top = 240, height = 400, left = 308, width = 250), replace = FALSE)
+      UN$get_text_from_boxes(paragraphs = TRUE)
+      sum(nchar(unname(unlist(UN$pages))))
+    },
+    831
+  )
+})

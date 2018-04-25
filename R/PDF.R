@@ -383,7 +383,10 @@ PDF <- R6::R6Class(
         sizes.pts <- do.call(rbind, lapply(sizes, as.numeric))[self$first:self$last, 1:2]
         colnames(sizes.pts) <- c("width.pts", "height.pts")
       } else {
-        sizes.pts <- data.frame(width.pts = sizes[[1]][1], height.pts = sizes[[1]][2])
+        sizes.pts <- data.frame(
+          width.pts = as.numeric(sizes[[1]][1]),
+          height.pts = as.numeric(sizes[[1]][2])
+          )
       }
       self$pagesizes <- cbind(self$pagesizes, sizes.pts)
       invisible(self$pagesizes)
