@@ -38,13 +38,13 @@ test_that("two_column_layout_decolumnize", {
       P$remove_unboxed_text_from_all_pages()
       P$deviation <- 10L
       P$decolumnize()
-      P$get_text_from_pages()
+      P$get_text_from_pages(paragraphs = FALSE)
       P$purge()
       P$xmlify()
       P$xml2html()
       nchar(as.character(P$html))
     },
-    373180
+    422307
   )
 })
 
@@ -79,5 +79,21 @@ test_that("one_page_document",{
       sum(nchar(unname(unlist(UN$pages))))
     },
     831
+  )
+})
+
+test_that("jitter",{
+  expect_equal(
+    {
+      doc <- system.file(package = "trickypdf", "extdata", "pdf", "N9986515_jitter_test.pdf")
+      UN <- PDF$new(filename_pdf = doc)
+      UN$add_box(box = c(top = 67, height = 645, left = 55, width = 250), page = NULL, replace = TRUE)
+      UN$add_box(box = c(top = 67, height = 645, left = 308, width = 250), page = NULL, replace = FALSE)
+      UN$add_box(box = c(top = 250, height = 422, left = 55, width = 250), page = 1, replace = TRUE)
+      UN$add_box(box = c(top = 250, height = 422, left = 308, width = 250), page = 1, replace = FALSE)
+      UN$get_text_from_boxes(paragraphs = FALSE)
+      grep("challenges of mine", unname(unlist(UN$pages)), value = TRUE)
+    },
+    "the challenges of mine action. Non-governmental"
   )
 })

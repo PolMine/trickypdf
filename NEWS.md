@@ -3,6 +3,8 @@
 invalid xml (happens occasionally) is repaired using xmllint --recover, if availably (issue #3)
 * bug fix (issue #2) - PDF class can now process one-page-documents
 * bug fix (issue #1) - whitespace in filename does not cause crash
+* missing whitespace when concatenating lines solved
+
 
 # v0.1.1
 * bug in method $get_pages() removed that occurrs when there are not text nodes on page

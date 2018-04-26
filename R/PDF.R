@@ -411,7 +411,7 @@ PDF <- R6::R6Class(
             txt[counter] <- xml2::xml_text(text_nodes[[i]])
             txtPosition[counter] <- topCurrentNode
           } else {
-            txt[counter] <- paste(txt[counter], xml2::xml_text(text_nodes[[i]]), sep = "")
+            txt[counter] <- paste(txt[counter], xml2::xml_text(text_nodes[[i]]), sep = " ")
           }
         }
       }
