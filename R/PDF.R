@@ -396,26 +396,41 @@ PDF <- R6::R6Class(
       
       text_nodes <- xml2::xml_find_all(node, xpath = "./text")
       txt <- character()
-      txtPosition <- integer()
+      txt_position <- integer()
       counter <- 1L
       if (length(text_nodes) == 0) return(txt)
       for (i in 1:length(text_nodes)){
         if (i == 1){
           txt[1] <- xml2::xml_text(text_nodes[[i]])
-          txtPosition[1] <- as.integer(xml2::xml_attrs(text_nodes[[i]])["top"])
+          txt_position[1] <- as.integer(xml2::xml_attrs(text_nodes[[i]])["top"])
         } else if ( i > 1 ){
-          topCurrentNode <- as.integer(xml2::xml_attrs(text_nodes[[i]])["top"])
-          topPreviousNode <- as.integer(xml2::xml_attrs(text_nodes[[i-1]])["top"])
-          if (abs(topCurrentNode - topPreviousNode) > self$jitter) {
+          position_y_current_node <- as.integer(xml2::xml_attrs(text_nodes[[i]])["top"])
+          position_y_previous_node <- as.integer(xml2::xml_attrs(text_nodes[[i-1]])["top"])
+          if (abs(position_y_current_node - position_y_previous_node) > self$jitter) {
             counter <- counter + 1L
             txt[counter] <- xml2::xml_text(text_nodes[[i]])
-            txtPosition[counter] <- topCurrentNode
+            txt_position[counter] <- position_y_current_node
           } else {
-            txt[counter] <- paste(txt[counter], xml2::xml_text(text_nodes[[i]]), sep = " ")
+            position_x_current_node <- as.integer(xml2::xml_attrs(text_nodes[[i]])["left"])
+            position_x_previous_node <- as.integer(xml2::xml_attrs(text_nodes[[i-1]])["left"])
+            if (position_x_current_node >= position_x_previous_node){
+              txt[counter] <- paste(
+                txt[counter],
+                xml2::xml_text(text_nodes[[i]]),
+                sep = " "
+                )
+            } else {
+              txt[counter] <- paste(
+                xml2::xml_text(text_nodes[[i]]),
+                txt[counter],
+                sep = " "
+                )
+            }
+            txt_position[counter] <- position_y_current_node
           }
         }
       }
-      txt <- txt[order(txtPosition)] # if order of text nodes is screwed up
+      txt <- txt[order(txt_position)] # if order of text nodes is screwed up
       if (paragraphs) txt <- restore_paragraphs(txt)
       txt
     },

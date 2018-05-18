@@ -1,8 +1,8 @@
 Package: trickypdf
 Type: Package
 Title: Turn tricky pdf into txt/xml for corpus preparation
-Version: 0.1.1.9002
-Date: 2018-04-25
+Version: 0.1.1.9003
+Date: 2018-05-17
 Author: Andreas Blaette
 Maintainer: Andreas Blaette <andreas.blaette@uni-due.de>
 Depends:
@@ -20,6 +20,7 @@ Imports:
 Suggests:
     testthat
 VignetteBuilder: knitr
+Encoding: UTF-8
 LazyData: yes
 Description: The class 'PDF' in the package includes methods to parse, prune and
     xmlify pdf documents. The speciality of the package is that it can handle pdf

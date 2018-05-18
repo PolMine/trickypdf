@@ -81,6 +81,10 @@ pdf_to_xml = function(filename, first, last){
 #' 
 #' Restore paragraphs in a character vector.
 #' 
+#' Reconstruct paragraphs from a character vector with line breaks and word-wraps.
+#' The heuristic is as follows: If a line ends with a hyphenation and the next line
+#' starts with a small letter, remove hyphen and concatenate word."
+#' 
 #' @param x a character vector
 #' @param skipRegexCurrent a regex
 #' @param skipRegexPrevious another regex
@@ -95,11 +99,6 @@ pdf_to_xml = function(filename, first, last){
 #'   )
 #' restore_paragraphs(vec)
 restore_paragraphs <- function(x, skipRegexCurrent = "^\\s*[\u2022A-Z(]", skipRegexPrevious = "[\\.?!)]\\s*$"){
-  
-  "Reconstruct paragraphs from a character vector with line breaks and word-wraps.
-  The heuristic is as follows: If a line ends with a hyphenation and the next line
-  starts with a small letter, remove hyphen and concatenate word."
-  
   if (length(x) > 2){
     for (i in length(x):2){
       if (nchar(x[i-1]) < 40 && grepl(skipRegexPrevious, x[i-1]) == TRUE){
