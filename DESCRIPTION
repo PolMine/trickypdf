@@ -1,8 +1,8 @@
 Package: trickypdf
 Type: Package
 Title: Turn tricky pdf into txt/xml for corpus preparation
-Version: 0.1.1.9003
-Date: 2018-05-17
+Version: 0.1.1.9004
+Date: 2018-08-17
 Author: Andreas Blaette
 Maintainer: Andreas Blaette <andreas.blaette@uni-due.de>
 Depends:
@@ -16,7 +16,8 @@ Imports:
     markdown,
     stringi,
     plyr,
-    methods
+    methods,
+    magrittr
 Suggests:
     testthat
 VignetteBuilder: knitr

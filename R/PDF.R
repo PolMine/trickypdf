@@ -69,6 +69,10 @@ setOldClass("html")
 #'   \item{\code{$browse(viewer = getOption("viewer", utils::browseURL))}}{Show
 #'   html document in browser.}
 #'   \item{\code{$wrixte()}}{Save xmlified document (available in the field 'xmlification') to a file.}
+#'   
+#'   
+#'   
+#'
 #' }
 #' 
 #' @section Arguments:
@@ -618,6 +622,297 @@ PDF <- R6::R6Class(
     write = function(filename){
       write_xml(self$xmlification, file = filename)
     },
+    
+    ######
+    
+    get_headline_boxes = function(page) {
+      pageNodes <- self$get_page_nodes()
+      
+      message("...detecting headline boxes")
+      headline_boxes <- pblapply(
+        pageNodes, # iterate through pages
+        function(page){
+          
+          pageNodeAttrs <- xml2::xml_attrs(page)[c("height", "width")]
+          pageNodeAttrs <- setNames(as.numeric(pageNodeAttrs), names(pageNodeAttrs))
+          pageCenter <- floor(pageNodeAttrs["width"] / 2)
+          
+          textNodes <- xml2::xml_find_all(page, xpath = "./text")
+          lapply(
+            textNodes, # iterate through text nodes
+            function(textNode){
+              position <- xml2::xml_attrs(textNode)
+              position <- setNames(as.integer(position), names(position))
+              
+              # old solution with purrr
+              # typicalLeftValues <- sort(
+              #   as.integer(names(head(sort(table(unlist(purrr::map(xml2::xml_attrs(textNodes), "left"))),
+              #                              decreasing = TRUE), 2))))
+              
+              typicalLeftValues <- textNodes %>% xml2::xml_attr("left") %>% as.integer() %>% table() %>% sort(decreasing=TRUE)
+              typicalLeftValues <- sort(as.integer(names(typicalLeftValues[1:2])))
+              
+              # naming the vector ll (left left: left boundary of left column) 
+              # and rl (right left: left boundary of right column)
+              
+              if (length(typicalLeftValues == 2)) names(typicalLeftValues) <- c("ll", "rl") else stop("...page has only one column")
+              
+              # Headline boxes do not need to be wider than a typical column, but they 
+              # cross the center of the page. Hence:
+              # If they start somewhere different than aligned left and cross the center of the page.
+              # NB: This isn't failproof as in scanned documents the alignment varies from line to line which is why we add or substract 5 to each typical value
+              # NB: even in digitally produced documents, the xml output of the pdf suggests a longer line sometimes which is why we add 10 to the center to avoid false positives 
+              
+              if (as.numeric(position["left"]) > typicalLeftValues["ll"] + 5 && as.numeric(position["left"]) < typicalLeftValues["rl"] - 5 && as.numeric(position["left"]) + as.numeric(position["width"]) > pageCenter + 10) {
+                
+                page_no <- as.integer(xml2::xml_attrs(page)["number"])
+                box_attributes <- xml2::xml_attrs(textNode)[c("top", "left", "width", "height")]
+                
+                headline_box <- data.frame(page = page_no, top = as.integer(box_attributes["top"]), left = as.integer(box_attributes["left"]), width = as.integer(box_attributes["width"]), height = as.integer(box_attributes["height"]), stringsAsFactors = FALSE)
+                
+                
+              }
+            }
+          )
+          
+        }
+      )
+      return(headline_boxes)
+    },  
+    
+    
+    concatenate_headline_boxes = function() {
+      boxes <- self$get_headline_boxes()
+      # add line index to detect consecutive lines
+      headline_box_dataframe <- data.frame()
+      for (i in 1:length(boxes)) {
+        box_list <- boxes[[i]]
+        names(box_list) <- seq_along(box_list)
+        page_boxes <- do.call(rbind, box_list)
+        page_boxes$idx <- as.integer(rownames(page_boxes))
+        headline_box_dataframe <- rbind(headline_box_dataframe, page_boxes)
+      }
+      
+      # the names of the page nodes of the already existing boxes in self$boxes are changed during dropping pages
+      # this is repeated for the newly created boxes here, in which pages were dropped but page node names weren't changed
+      
+      headline_box_dataframe$page <- headline_box_dataframe$page - (min(headline_box_dataframe$page) - min(self$boxes$page_node))
+      
+      # soft filtering of boxes which are out of bounds or too narrow to be actual headlines (5 pt)
+      
+      mean_vertical <- mean(self$pagesizes[, "height"]) / mean(self$pagesizes[, "height.pts"])
+      
+      top_page <- min(self$boxes$top) # the smallest top value of any box
+      height_page <- max(self$boxes$height) # the greatest height value of any box
+      
+      headline_box_dataframe <- subset(headline_box_dataframe, top > top_page & top < (top_page + height_page)) 
+      headline_box_dataframe <- subset(headline_box_dataframe, width > 5) # hardcoding rausnehmen?
+      
+      if (nrow(headline_box_dataframe) > 0) {
+        for (i in 2:nrow(headline_box_dataframe)) {
+          
+          # if line directly follows the previously detected line and top of line is greater than top of previous line 
+          if (headline_box_dataframe[i,"idx"] == headline_box_dataframe[i-1,"idx"]+1 && headline_box_dataframe[i,"top"] > headline_box_dataframe[i-1,"top"]) {
+            
+            # use the top value of the previously detected line
+            linedist <- headline_box_dataframe[i, "top"] - headline_box_dataframe[i-1, "top"]
+            
+            headline_box_dataframe[i, "top"] <- headline_box_dataframe[i-1, "top"]
+            
+            # compare both "left" values and use smaller one
+            headline_box_dataframe[i, "left"] <- ifelse(headline_box_dataframe[i, "left"] < headline_box_dataframe[i-1, "left"], headline_box_dataframe[i, "left"], headline_box_dataframe[i-1, "left"])
+            
+            # compare both "width" values and use greater one
+            headline_box_dataframe[i, "width"] <- ifelse(headline_box_dataframe[i, "width"] > headline_box_dataframe[i-1, "width"], headline_box_dataframe[i, "width"], headline_box_dataframe[i-1, "width"])
+            
+            # add "height" value of previos line to current line plus the distance between the lines
+            headline_box_dataframe[i, "height"] <- headline_box_dataframe[i, "height"] + linedist
+            
+            # after incorporating previos line, mark its row for later removal (otherwise the indexing gets confused)
+            headline_box_dataframe[i-1, "idx"] <- 0
+          }
+        }
+      } else {
+        message("no headlines detected")
+      }
+      
+      
+      # remove all rows from headline_box_dataframe with idx of 0, because they are all concatenated in one box now
+      
+      headline_box_dataframe <- headline_box_dataframe[-which(headline_box_dataframe$idx == 0), ]
+      return(headline_box_dataframe)
+      
+    },
+    
+    
+    merge_boxes = function(page_top = NULL, page_height = NULL) {
+      headline_boxes <- self$concatenate_headline_boxes()
+      self$boxes$headline <- FALSE
+      pages <- as.integer(unique(headline_boxes$page))
+      
+      for (page in pages) {
+        
+        vertical <- self$pagesizes[page, "height"] / self$pagesizes[page, "height.pts"]
+        tmp_box <- headline_boxes[which(headline_boxes$page == page),]
+        
+        # maybe take top and height from other boxes
+        
+        tmp_box$bottom <- tmp_box$top + tmp_box$height
+        tmp_box$right <- tmp_box$left + tmp_box$width
+        
+        # drop boxes which are out of bounds
+        
+        top_page <- min(self$boxes$top[self$boxes$page_node == page]) # the smallest top value of any box on page
+        height_page <- max(self$boxes$height[self$boxes$page_node == page]) # the greatest height value of any box on page
+        
+        
+        tmp_box <- subset(tmp_box, top > (top_page) & top < (top_page + height_page))
+        
+        # here, it might be that all the detected headline boxes were indeed out of bounds (i.e. header boxes etc.)
+        if (nrow(tmp_box) > 0) {
+          names(tmp_box)[names(tmp_box) == 'page'] <- 'page_node'  
+          tmp_box$idx <- NULL
+          tmp_box$headline <- TRUE
+        }
+        
+        
+        self$boxes <- rbind(self$boxes, tmp_box)
+        
+      }
+      
+      return(self$boxes)
+      
+    },
+    
+    add_headline_boxes = function(page_top = page_top, page_height = page_height) {
+      self$boxes <- self$merge_boxes()
+      
+      # Wenn es eine Box gibt mit headline = TRUE
+      
+      true_pages <- self$boxes[which(self$boxes$headline == TRUE), ]
+      true_pages <- as.integer(unique(true_pages$page_node))
+      
+      for (page in true_pages) {
+        
+        # split box dataframe into one box per page and get headline box seperately
+        tmp_box <- self$boxes[which(self$boxes$page_node == page),]
+        tmp_hl <- tmp_box[which(tmp_box$headline == TRUE), ]
+        
+        # adjust margins of highlight boxes as well as height and width slightly to avoid too narrow boxes
+        tmp_hl$top <- tmp_hl$top - 1
+        tmp_hl$left <- tmp_hl$left - 1
+        tmp_hl$height <- tmp_hl$height + 2
+        tmp_hl$width <- tmp_hl$width + 2
+        
+        
+        # get greatest possible height from one of the ordinary boxes
+        general_height <- tmp_box[which(tmp_box$headline == FALSE), "height"][1]
+        
+        # to calculate new heights we need the height of the boxes plus the height of the space above the first box (i.e. the top margin)
+        combined_height <- general_height + tmp_box[which(tmp_box$headline == FALSE), "top"][1]
+        
+        # get top value of headline box
+        top_headline <- tmp_box[which(tmp_box$headline == TRUE), "top"]
+        
+        # get height of headline box
+        height_headline <- tmp_box[which(tmp_box$headline == TRUE), "height"]
+        
+        # get all non-headline boxes
+        tmp_box <- tmp_box[which(tmp_box$headline == FALSE), ]
+        
+        top_page <- min(self$boxes$top[self$boxes$page_node == page]) # the smallest top value of any box on page
+        
+        median_lineheight <- 20
+        
+        
+        # for each headline box
+        for (j in 1:length(top_headline)) {
+          
+          # if there is only one headline which is on the very top of the page, shorten boxes underneath
+          
+          if (length(top_headline) == 1 && top_headline[j]/(self$pagesizes[page, "height"] / self$pagesizes[page, "height.pts"]) - top_page < median_lineheight) {
+            
+            # shorten box underneath the headline and adjust top value
+            
+            tmp_box[, "top"] <- top_headline[j] + height_headline[j]
+            tmp_box[, "height"] <- combined_height - top_headline[j] - height_headline[j]
+            
+            # if there are multiple headline boxes but the first is on the very top
+            
+          } else if (j == 1 && top_headline[j]/(self$pagesizes[page, "height"] / self$pagesizes[page, "height.pts"]) - top_page < median_lineheight) {
+            
+            # shorten box underneath the headline and adjust top value
+            
+            tmp_box[, "top"] <- top_headline[j] + height_headline[j]
+            tmp_box[, "height"] <- top_headline[j+1] - top_headline[j] - height_headline[j]
+            tmp_box[, "bottom"] <- tmp_box[, "top"] + tmp_box[, "height"]
+            
+            
+          } else {
+            # if there are headline boxes but not on top
+            
+            if (length(top_headline[j-1]) == 0) {
+              tmp_box[, "height"] <- tmp_box[, "height"] - (combined_height - top_headline[j]) - 3
+              tmp_box[, "bottom"] <- tmp_box[, "top"] + tmp_box[, "height"]
+            }
+            # a new box must follow the headline box
+            
+            top_new_box <- top_headline[j] + height_headline[j]
+            
+            # the new box must be as high as the entire possible length minus the already occupied 
+            # space above and minus the (potentially) already occupied space underneath
+            
+            if (!is.na(top_headline[j+1])) {
+              height_new_box <- combined_height - top_new_box - (combined_height - top_headline[j+1]) - 3
+            } else {
+              height_new_box <- combined_height - top_new_box
+            }
+            
+            
+            # copy values of old box and replace top, height and bottom for box underneath 
+            
+            if (j == 1) {
+              for (i in 1:nrow(tmp_box)) {
+                
+                new_box <- tmp_box[i,]
+                new_box$height <- height_new_box
+                new_box$top <- top_new_box
+                new_box$bottom <- new_box$top + new_box$height
+                tmp_box <- rbind(tmp_box, new_box)
+              }
+              
+            } else {
+              
+              for (i in 1:nrow(tmp_box[ which(tmp_box[,"top"] > top_headline[j-1]), ])) {
+                
+                new_box <- tmp_box[ which(tmp_box[,"top"] > top_headline[j-1]), ][i,]
+                new_box$height <- height_new_box
+                new_box$top <- top_new_box
+                new_box$bottom <- new_box$top + new_box$height
+                tmp_box <- rbind(tmp_box, new_box)
+              }
+            }
+          }
+        }
+        
+        # remove previous text boxes and replace with newly calculated
+        self$boxes <- self$boxes[-which(self$boxes$page_node == page), ]
+        x <- rbind(tmp_box, tmp_hl)
+        self$boxes <- rbind(self$boxes, x)
+        
+        
+      }
+      
+      # as for now, the order of the boxes in plain text are determined by their respective position in the data frame. 
+      # Reorder here accordingly
+      
+      self$boxes <- self$boxes[order(self$boxes[,"page_node"], self$boxes[,"top"], self$boxes[,"left"]),]
+      
+    },
+    
+    
+    
+
     
     get_page_nodes = function() xml2::xml_find_all(self$xml, xpath = "/pdf2xml/page")
   )

@@ -22,7 +22,7 @@ Many documents are available in a pdf format. There are many reasons why data sc
 is the first step to further process text in a Natural Language Processing (NLP) pipeline, or to analyse it directly. To support this rather technical step, R users can use a couple of packages to extract text from pdf documents, in particular [Rpoppler](), or [pdftools](). However, if you deal with somewhat or more heavily layouted document, the real work starts after text extraction. To get rid of unwanted features resulting from document layout, manual cleaning, batteries of regular expressions and several further programming quirks may be necessary to get the postprocessing task done.
 
 The idea of the trickypdf package is to proactively deal with the layout of a document and to extract
-the text as cleanly as possible, to obfiscate nerve-wrecking postprocessing.
+the text as cleanly as possible, to obviate the need for nerve-wrecking postprocessing.
 
 
 
@@ -156,7 +156,7 @@ We will dissolve the two column layout using the `$decolumnize()`-method: It rea
 ```{r decolumnize}
 P$deviation <- 10L
 P$decolumnize()
-````
+```
 
 Let us get the result from the pages.
 
@@ -187,8 +187,63 @@ writeLines(
   )
 ```
 
+### Add previously undetected headlines
+
+In some two column documents, there are headlines which span over both columns. Sometimes, one cannot define the location of these headlines in advance. For this purpose, a functionality was created to detect these lines and add boxes accordingly. The process is just as described above with one added line. We use a plenary protocol from Saxony to illustrate the method.
+
+```{r}
+plenaryprotocol_saxony <- system.file(package = "trickypdf", "extdata", "pdf", "SN_05_002.pdf")
+if (interactive()) browseURL(plenaryprotocol_saxony)
+```
+
+If you look at the pdf document, you see three headlines which are distributed irregularly. 
+
+```{r}
+
+regexStartDebate <- "^\\s*\\(Beginn\\sder\\sSitzung:?\\s\\d{1,2}(:|\\.)\\d{1,2}\\sUhr\\)\\s*$" 
+regexEndDebate <- "^\\s*\\((Schluss|Ende|Schluß)\\sder\\sSitzung:?\\s\\d{1,2}(:|\\.)\\d{1,2}\\sUhr\\)\\s*$" 
+
+    P <- PDF$new(filename_pdf = plenaryprotocol_saxony) 
+    P$jitter <- 10
+    P$get_text_from_pages(paragraphs = FALSE) 
 
 
+
+      pageStartDebate <- P$find(regex = regexStartDebate)
+      pageEndDebate <- P$find(regex = regexEndDebate)
+
+      P$drop_page(page = (pageEndDebate + 1):P$no_pages) 
+      P$drop_page(page = 1:(pageStartDebate - 1))
+
+
+
+
+  P$add_box(box = c(top = 68, height = 710, left = 54, width = 240), page = NULL, replace = TRUE)
+  P$add_box(box = c(top = 68, height = 710, left = 300, width = 240), page = NULL, replace = FALSE)
+  
+  # the last page of every protocol differs in layout. Use P$no_pages which accounts for dropped pages.
+  
+  P$add_box(box = c(top = 68, height = 640, left = 54, width = 240), page = P$no_pages, replace = TRUE)
+  P$add_box(box = c(top = 68, height = 640, left = 300, width = 240), page = P$no_pages, replace = FALSE)
+
+```
+
+After we declared these boxes, we add our headlines. 
+
+```{r}
+library(magrittr)
+P$add_headline_boxes()
+```
+
+This process loops through every line of text and checks for lines which cross the middle of the page. It then concatenates these lines and recalculates the previously assigned boxes. With this step performed, we proceed like earlier.
+
+```{r}
+    P$get_text_from_boxes(paragraphs = FALSE)
+    P$purge()
+    plaintext <- unname(unlist(P$pages))
+```
+
+As we see, the headlines are detected nicely.
 
 ### Annex
 
