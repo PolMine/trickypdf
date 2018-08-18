@@ -221,11 +221,6 @@ regexEndDebate <- "^\\s*\\((Schluss|Ende|Schluß)\\sder\\sSitzung:?\\s\\d{1,2}(:
   P$add_box(box = c(top = 68, height = 710, left = 54, width = 240), page = NULL, replace = TRUE)
   P$add_box(box = c(top = 68, height = 710, left = 300, width = 240), page = NULL, replace = FALSE)
   
-  # the last page of every protocol differs in layout. Use P$no_pages which accounts for dropped pages.
-  
-  P$add_box(box = c(top = 68, height = 640, left = 54, width = 240), page = P$no_pages, replace = TRUE)
-  P$add_box(box = c(top = 68, height = 640, left = 300, width = 240), page = P$no_pages, replace = FALSE)
-
 ```
 
 After we declared these boxes, we add our headlines. 
