@@ -402,7 +402,7 @@ PDF <- R6::R6Class(
       txt <- character()
       txt_position <- integer()
       counter <- 1L
-      if (length(text_nodes) == 0) return(txt)
+      if (length(text_nodes) == 0L) return(txt)
       for (i in 1:length(text_nodes)){
         if (i == 1){
           txt[1] <- xml2::xml_text(text_nodes[[i]])
@@ -649,7 +649,7 @@ PDF <- R6::R6Class(
               #   as.integer(names(head(sort(table(unlist(purrr::map(xml2::xml_attrs(textNodes), "left"))),
               #                              decreasing = TRUE), 2))))
               
-              typicalLeftValues <- textNodes %>% xml2::xml_attr("left") %>% as.integer() %>% table() %>% sort(decreasing=TRUE)
+              typicalLeftValues <- sort(table(as.integer(xml2::xml_attr(textNodes, attr = "left"))), decreasing = TRUE)
               typicalLeftValues <- sort(as.integer(names(typicalLeftValues[1:2])))
               
               # naming the vector ll (left left: left boundary of left column) 
@@ -909,11 +909,7 @@ PDF <- R6::R6Class(
       self$boxes <- self$boxes[order(self$boxes[,"page_node"], self$boxes[,"top"], self$boxes[,"left"]),]
       
     },
-    
-    
-    
 
-    
     get_page_nodes = function() xml2::xml_find_all(self$xml, xpath = "/pdf2xml/page")
   )
 )

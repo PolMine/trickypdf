@@ -1,12 +1,12 @@
 Package: trickypdf
 Type: Package
 Title: Turn tricky pdf into txt/xml for corpus preparation
-Version: 0.1.1.9004
-Date: 2018-08-17
-Author: Andreas Blaette
-Maintainer: Andreas Blaette <andreas.blaette@uni-due.de>
-Depends:
-    knitr
+Version: 0.1.2
+Date: 2019-11-19
+Authors@R: c(
+  person("Andreas", "Blaette", role = c("aut", "cre"), email = "andreas.blaette@uni-due.de", comment = c(ORCID = "0000-0001-8970-8010")),
+  person("Christoph", "Leonhardt", role = "aut")
+  )
 Imports:
     R6,
     xml2,
@@ -17,7 +17,7 @@ Imports:
     stringi,
     plyr,
     methods,
-    magrittr
+    knitr
 Suggests:
     testthat
 VignetteBuilder: knitr
@@ -33,4 +33,4 @@ Collate:
     'PDF.R'
     'trickypdf.R'
     'utils.R'
-RoxygenNote: 6.0.1
+RoxygenNote: 6.1.1

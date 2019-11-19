@@ -44,7 +44,7 @@ test_that("two_column_layout_decolumnize", {
       P$xml2html()
       nchar(as.character(P$html))
     },
-    422307
+    422378
   )
 })
 
@@ -63,7 +63,7 @@ test_that("two_column_layout_boxes", {
       nchar(as.character(UN$html))
       
     },
-    8618
+    8625
   )
 })
 
@@ -78,7 +78,7 @@ test_that("one_page_document",{
       UN$get_text_from_boxes(paragraphs = TRUE)
       sum(nchar(unname(unlist(UN$pages))))
     },
-    831
+    840
   )
 })
 

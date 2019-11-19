@@ -90,6 +90,10 @@ To get the margins of the text: Use Rechteckige Auswahl, and Werkzeuge/Allgemein
   \item{\code{$browse(viewer = getOption("viewer", utils::browseURL))}}{Show
   html document in browser.}
   \item{\code{$wrixte()}}{Save xmlified document (available in the field 'xmlification') to a file.}
+  
+  
+  
+
 }
 }
 

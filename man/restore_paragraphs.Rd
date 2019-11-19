@@ -17,6 +17,11 @@ restore_paragraphs(x, skipRegexCurrent = "^\\\\s*[•A-Z(]",
 \description{
 Restore paragraphs in a character vector.
 }
+\details{
+Reconstruct paragraphs from a character vector with line breaks and word-wraps.
+The heuristic is as follows: If a line ends with a hyphenation and the next line
+starts with a small letter, remove hyphen and concatenate word."
+}
 \examples{
 vec <- c(
   "This is a sample text. We freq-",
