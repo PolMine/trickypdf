@@ -9,7 +9,7 @@ addons:
   - libxml2-utils
 
 before_install:
-  - sudo apt-get install -y libpoppler-glib-dev poppler-utils libpoppler-cpp-dev
+  - sudo apt-get install -y libpoppler-glib-dev poppler-utils libpoppler-cpp-dev libxml2-utils
   - Rscript -e 'install.packages(pkgs = c("Rpoppler", "covr"))'
 
 warnings_are_errors: false
