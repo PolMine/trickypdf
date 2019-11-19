@@ -11,13 +11,13 @@ Imports:
     R6,
     xml2,
     pbapply,
-    Rpoppler,
     htmltools,
     markdown,
     stringi,
     plyr,
     methods,
-    knitr
+    knitr,
+    pdftools
 Suggests:
     testthat
 VignetteBuilder: knitr

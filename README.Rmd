@@ -4,6 +4,11 @@ output: github_document
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Travis-CI Build Status](https://api.travis-ci.org/PolMine/trickypdf.svg?branch=master)](https://travis-ci.org/PolMine/trickypdf)
+[![codecov](https://codecov.io/gh/PolMine/trickypdf/branch/dev/graph/badge.svg)](https://codecov.io/gh/PolMine/trickypdf/branch/master)
+
+
 ```{r, echo = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,

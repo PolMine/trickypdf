@@ -40,9 +40,9 @@ setOldClass("html")
 #'   position, and half of the page width substracted from the left position.}
 #'   \item{\code{$get_pagesizes()}}{Get page width and height (points/pts and
 #'   pdf units). The pdf units are extracted from the xmlified pdf document. To
-#'   get sizes in points (pts), PDF_info (package Rpoppler) is used. The result
-#'   is a data.frame in the field pagesizes. The method is called when parsing
-#'   the pdf document.}
+#'   get sizes in points (pts), \code{pdf_pagesize} (package pdftools) is used.
+#'   The result is a data.frame in the field pagesizes. The method is called
+#'   when parsing the pdf document.}
 #'   \item{\code{$get_text(node, paragraphs = TRUE)}}{Get the text from document
 #'   in field 'xml'.}
 #'   \item{\code{$get_number_of_pages()}}{get number of pages of XML document of pdf}
@@ -93,11 +93,11 @@ setOldClass("html")
 #' @importFrom pbapply pblapply
 #' @importFrom R6 R6Class
 #' @importFrom htmltools HTML html_print
-#' @importFrom Rpoppler PDF_info
 #' @importFrom stringi stri_extract_all
 #' @importFrom markdown markdownToHTML
 #' @importFrom plyr dlply .
 #' @importFrom methods setOldClass
+#' @importFrom pdftools pdf_info pdf_pagesize
 #' @rdname PDF-class
 #' @name PDF
 #' @export PDF
@@ -182,7 +182,7 @@ PDF <- R6::R6Class(
       
       stopifnot(length(first) == 1, length(last) == 1, length(jitter) == 1)
       self$first <- if (is.na(first)) 1L else as.integer(first)
-      self$last <- if (is.na(last)) as.integer(Rpoppler::PDF_info(filename_pdf)$Pages) else as.integer(last)
+      self$last <- if (is.na(last)) pdftools::pdf_info(filename_pdf)[["pages"]] else as.integer(last)
       self$jitter <- jitter
       self$margins <- margins
       self$boxes <- data.frame(
@@ -375,24 +375,16 @@ PDF <- R6::R6Class(
     get_pagesizes = function(){
       
       # get width and height (pdf units)
-      xmlAttrsPages <- lapply(self$get_page_nodes(), xml_attrs)
-      self$pagesizes <- as.data.frame(do.call(rbind, xmlAttrsPages), stringsAsFactors = FALSE)
+      xml_attrs_pages <- lapply(self$get_page_nodes(), xml_attrs)
+      self$pagesizes <- as.data.frame(do.call(rbind, xml_attrs_pages), stringsAsFactors = FALSE)
       colnames(self$pagesizes)[which(colnames(self$pagesizes) == "number")] <- "page_node"
       for (what in c("page_node", "top", "left", "height", "width")){
         self$pagesizes[[what]] <- as.integer(self$pagesizes[[what]])
       }
       
-      sizes <- stri_extract_all(str = Rpoppler::PDF_info(self$filename_pdf)$Sizes, regex = "\\d+(\\.\\d+|)")
-      if (length(sizes) > 1){
-        sizes.pts <- do.call(rbind, lapply(sizes, as.numeric))[self$first:self$last, 1:2]
-        colnames(sizes.pts) <- c("width.pts", "height.pts")
-      } else {
-        sizes.pts <- data.frame(
-          width.pts = as.numeric(sizes[[1]][1]),
-          height.pts = as.numeric(sizes[[1]][2])
-          )
-      }
-      self$pagesizes <- cbind(self$pagesizes, sizes.pts)
+      sizes_pts <- pdftools::pdf_pagesize(pdf = self$filename_pdf)[, c("width", "height")]
+      colnames(sizes_pts) <- c("width.pts", "height.pts")
+      self$pagesizes <- cbind(self$pagesizes, sizes_pts[self$first:self$last,])
       invisible(self$pagesizes)
     },
     

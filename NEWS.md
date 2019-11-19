@@ -9,6 +9,7 @@
 * Package 'magrittr' has been dropped from 'Dependes:' in DESCRIPTION; code using magrittr has been reformulated 
 to avoid using magrittr within a package.
 * Christoph Leonhardt listed as package author.
+* To overcome the dependency on the Rpoppler package, which has become inhibiting on the portability of the package, usage of the function `Rpoppler::PDF_info()` has been replaced by a reliance on `pdftools::pdf_info()` and `pdftools::pdf_pagesize()`, respectively.
 
 
 # v0.1.1

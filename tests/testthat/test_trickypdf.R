@@ -12,6 +12,20 @@ test_that("restore_paragraphs", {
 })
 
 
+test_that("get pagesizes",{
+  cdu_pdf <- system.file(package = "trickypdf", "extdata", "pdf", "cdu.pdf")
+  P <- PDF$new(filename_pdf = cdu_pdf, first = 7, last = 119)
+  expect_identical(dim(P$pagesizes), c(113L,8L))
+  expect_identical(P$pagesizes[["page_node"]], 7:119)
+  expect_identical(unique(P$pagesizes[["top"]]), 0L)
+  expect_identical(unique(P$pagesizes[["left"]]), 0L)
+  expect_identical(unique(P$pagesizes[["height"]]), 1262L)
+  expect_identical(unique(P$pagesizes[["width"]]), 892L)
+  expect_identical(round(unique(P$pagesizes[["width.pts"]]), 2), 595.32)
+  expect_identical(unique(P$pagesizes[["height.pts"]]), 841.92)
+  
+})
+
 test_that("one_column_layout", {
   expect_equal(
     {
