@@ -226,16 +226,15 @@ regexEndDebate <- "^\\s*\\((Schluss|Ende|Schluß)\\sder\\sSitzung:?\\s\\d{1,2}(:
 After we declared these boxes, we add our headlines. 
 
 ```{r}
-library(magrittr)
 P$add_headline_boxes()
 ```
 
 This process loops through every line of text and checks for lines which cross the middle of the page. It then concatenates these lines and recalculates the previously assigned boxes. With this step performed, we proceed like earlier.
 
 ```{r}
-    P$get_text_from_boxes(paragraphs = FALSE)
-    P$purge()
-    plaintext <- unname(unlist(P$pages))
+P$get_text_from_boxes(paragraphs = FALSE)
+P$purge()
+plaintext <- unname(unlist(P$pages))
 ```
 
 As we see, the headlines are detected nicely.

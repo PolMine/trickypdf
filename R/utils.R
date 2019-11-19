@@ -5,7 +5,6 @@
 #' @param last last page to process
 #' @return an \code{xml_document} class object from package \code{xml2}
 #' @importFrom xml2 read_xml
-#' @importFrom Rpoppler PDF_info
 #' @export pdf_to_xml
 #' @examples
 #' unmd_pdf <- system.file(package = "trickypdf", "extdata", "pdf", "UN_Millenium_Declaration.pdf")
@@ -22,7 +21,7 @@ pdf_to_xml = function(filename, first, last){
   if (!file.exists(filename)) stop("file does not exist: ", filename)
   if (file.info(filename)[["isdir"]] == TRUE) stop("filename is not a file, but a directory")
   
-  no_pages <- Rpoppler::PDF_info(filename)$Pages
+  no_pages <- pdftools::pdf_info(filename)[["pages"]]
   if (missing(first)) first <- 1L
   if (missing(last)) last <- no_pages
   if (last > no_pages) last <- no_pages

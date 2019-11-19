@@ -61,9 +61,9 @@ To get the margins of the text: Use Rechteckige Auswahl, and Werkzeuge/Allgemein
   position, and half of the page width substracted from the left position.}
   \item{\code{$get_pagesizes()}}{Get page width and height (points/pts and
   pdf units). The pdf units are extracted from the xmlified pdf document. To
-  get sizes in points (pts), PDF_info (package Rpoppler) is used. The result
-  is a data.frame in the field pagesizes. The method is called when parsing
-  the pdf document.}
+  get sizes in points (pts), \code{pdf_pagesize} (package pdftools) is used.
+  The result is a data.frame in the field pagesizes. The method is called
+  when parsing the pdf document.}
   \item{\code{$get_text(node, paragraphs = TRUE)}}{Get the text from document
   in field 'xml'.}
   \item{\code{$get_number_of_pages()}}{get number of pages of XML document of pdf}
